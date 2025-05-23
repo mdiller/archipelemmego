@@ -1,0 +1,64 @@
+﻿using Discord;
+using Discord.Interactions;
+using Discord.WebSocket;
+using System.Reflection;
+
+namespace ArchipeLemmeGo.Bot
+{
+    public class InteractionHandler
+    {
+        private readonly DiscordSocketClient _client;
+        private readonly InteractionService _commands;
+        private readonly IServiceProvider _services;
+
+        public InteractionHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
+        {
+            _client = client;
+            _commands = commands;
+            _services = services;
+
+            _client.Ready += OnReady;
+            _client.InteractionCreated += HandleInteraction;
+        }
+
+        private async Task OnReady()
+        {
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+            await _commands.RegisterCommandsGloballyAsync(); // or per-guild during dev
+        }
+
+        private async Task HandleInteraction(SocketInteraction interaction)
+        {
+            var ctx = new SocketInteractionContext(_client, interaction);
+            await _commands.ExecuteCommandAsync(ctx, _services);
+        }
+
+        public async Task InitializeAsync()
+        {
+            // Placeholder if you want to expand later
+        }
+
+        // InteractionHandler.cs
+        public async Task HandleInteractionExecutedAsync(ICommandInfo command, IInteractionContext context, IResult result)
+        {
+            if (result.IsSuccess)
+                return;
+
+            if (result.Error == InteractionCommandError.Exception && result is ExecuteResult execResult)
+            {
+                var ex = execResult.Exception;
+
+                // Handle your specific exception type
+                if (ex is UserError specificEx)
+                {
+                    await context.Interaction.RespondAsync(specificEx.Message);
+                    return;
+                }
+
+                // Generic fallback
+                await context.Interaction.RespondAsync($"EXCEPTION OCCURRED OH NO:\n```\n{ex.GetType().FullName}:\n{ex.Message}\n```");
+            }
+        }
+    }
+
+}
