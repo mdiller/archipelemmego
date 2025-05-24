@@ -65,6 +65,8 @@ namespace ArchipeLemmeGo.Bot
 
                 var hintInfos = hints.Select(h => RequestedHintInfo.Create(h, information, priority, count)).ToList();
 
+                // TODO: MAKE THE STRING BELOW SPECIFY HOW MANY WE NEED (also we dont need to print item every time)
+
                 var result = hintInfos.Count <= 1 ? "Added this request" : "Added the following requests";
                 result = $"__{result}:__";
                 // if we now have a hint (or list of hints), add them to the list of requests for this room?

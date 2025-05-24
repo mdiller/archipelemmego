@@ -53,6 +53,6 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// <summary>
         /// The current list of requested hints
         /// </summary>
-        public List<RequestedHintInfo> RequestedHints { get; set; }
+        public List<RequestedHintInfo> RequestedHints { get; set; } = new List<RequestedHintInfo>();
     }
 }
