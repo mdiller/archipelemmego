@@ -80,9 +80,11 @@ namespace ArchipeLemmeGo.Archipelago
 
             try
             {
-                var connectResult = await client.ConnectAsync();
-
-                if (!connectResult)
+                try
+                {
+                    await client.ConnectAsync();
+                }
+                catch (ArchipelagoDisconnectedException)
                 {
                     throw new UserError("Unable to connect to the room with that slot name");
                 }

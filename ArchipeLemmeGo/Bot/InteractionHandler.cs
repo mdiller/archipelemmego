@@ -24,7 +24,8 @@ namespace ArchipeLemmeGo.Bot
         private async Task OnReady()
         {
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-            await _commands.RegisterCommandsGloballyAsync(); // or per-guild during dev
+            await _commands.RegisterCommandsGloballyAsync();
+            await _commands.RegisterCommandsToGuildAsync(BotInfo.TestGuildId); // per-guild register for testing
         }
 
         private async Task HandleInteraction(SocketInteraction interaction)

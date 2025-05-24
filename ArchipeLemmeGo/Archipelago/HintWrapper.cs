@@ -14,7 +14,7 @@ namespace ArchipeLemmeGo.Archipelago
         /// <summary>
         /// The thint
         /// </summary>
-        public Hint Hint { get; set; }
+        public RequestedHintInfo HintInfo { get; set; }
 
         public string Location { get; set; }
 
@@ -28,15 +28,15 @@ namespace ArchipeLemmeGo.Archipelago
         /// weheee
         /// </summary>
         /// <param name="hint"></param>
-        public HintWrapper(Hint hint, RoomInfo roomInfo)
+        public HintWrapper(RequestedHintInfo hint, RoomInfo roomInfo)
         {
-            Hint = hint;
+            HintInfo = hint;
 
-            var finderInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.FindingPlayer);
-            var recieverInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.ReceivingPlayer);
+            var finderInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.FinderSlot);
+            var recieverInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.RequesterSlot);
 
-            Reciever = $"Player in Slot {hint.ReceivingPlayer}";
-            Finder = $"Player in Slot {hint.FindingPlayer}";
+            Reciever = $"Player in Slot {hint.RequesterSlot}";
+            Finder = $"Player in Slot {hint.FinderSlot}";
             Item = $"Item @id={hint.ItemId}";
             Location = $"Location @id={hint.LocationId}";
 

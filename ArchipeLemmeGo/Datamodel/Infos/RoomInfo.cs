@@ -49,5 +49,10 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// The infos for each slot
         /// </summary>
         public List<SlotInfo> SlotInfos { get; set; } = new List<SlotInfo>();
+
+        /// <summary>
+        /// The current list of requested hints
+        /// </summary>
+        public List<RequestedHintInfo> RequestedHints { get; set; }
     }
 }

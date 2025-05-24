@@ -30,9 +30,9 @@ namespace ArchipeLemmeGo.Archipelago
             SlotInfo = slotInfo;
         }
 
-        public async Task<bool> ConnectAsync()
+        public async Task ConnectAsync()
         {
-            return await Task.Run(() =>
+            var result = await Task.Run(() =>
             {
                 _session = ArchipelagoSessionFactory.CreateSession(RoomInfo.Host, RoomInfo.Port);
                 // TO ADD THIS BACK IN FUTURE, MAKE SURE TO DO PROPERLY, CUZ WE CREATE NEW SESSION LATYER SOMETIMES
@@ -62,6 +62,10 @@ namespace ArchipeLemmeGo.Archipelago
                     return result is LoginSuccessful;
                 }
             });
+            if (result == false)
+            {
+                throw new ArchipelagoDisconnectedException(RoomInfo, SlotInfo);
+            }
         }
 
         public int SlotId => _session.ConnectionInfo.Slot;
@@ -105,9 +109,7 @@ namespace ArchipeLemmeGo.Archipelago
         {
             if (!IsConnected)
             {
-                var success = await ConnectAsync();
-                if (!success)
-                    throw new ArchipelagoDisconnectedException(RoomInfo, SlotInfo);
+                await ConnectAsync();
             }
         }
 

@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace ArchipeLemmeGo.Bot
 {
@@ -26,11 +27,11 @@ namespace ArchipeLemmeGo.Bot
                 .BuildServiceProvider();
 
             var client = services.GetRequiredService<DiscordSocketClient>();
-            var interactions = services.GetRequiredService<InteractionService>();
+            var interactionService = services.GetRequiredService<InteractionService>();
             var interactionHandler = services.GetRequiredService<InteractionHandler>();
 
             client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-            interactions.InteractionExecuted += interactionHandler.HandleInteractionExecutedAsync;
+            interactionService.InteractionExecuted += interactionHandler.HandleInteractionExecutedAsync;
 
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
