@@ -40,7 +40,9 @@ namespace ArchipeLemmeGo.Archipelago
             var recieverInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.RequesterSlot);
 
             RecieverName = $"Player in Slot {hint.RequesterSlot}";
+            RecieverMention = RecieverName;
             FinderName = $"Player in Slot {hint.FinderSlot}";
+            FinderMention = FinderName;
             Item = $"Item @id={hint.ItemId}";
             Location = $"Location @id={hint.LocationId}";
 

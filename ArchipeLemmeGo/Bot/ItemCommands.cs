@@ -102,7 +102,7 @@ namespace ArchipeLemmeGo.Bot
                     // if we now have a hint (or list of hints), add them to the list of requests for this room?
                     foreach (var hintWrapper in hintWrappers.Where(h => !h.HintInfo.IsFound))
                     {
-                        result += $"\n • '{hintWrapper.Location}' ({hintWrapper.FinderMention})";
+                        result += $"\n • '{hintWrapper.Location}' from {hintWrapper.FinderMention}";
                     }
                 }
 
@@ -125,7 +125,7 @@ namespace ArchipeLemmeGo.Bot
                 .ToList();
             var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
-            var result = "__Locations to get:__";
+            var result = "__Waiting For:__";
             long itemId = -1;
 
             foreach (var hintWrapper in hintWrappers)
@@ -153,7 +153,7 @@ namespace ArchipeLemmeGo.Bot
                 .ToList();
             var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
-            var result = "__Waiting For:__";
+            var result = "__Things to do:__";
             long itemId = -1;
 
             foreach (var hintWrapper in hintWrappers)
