@@ -72,6 +72,36 @@ namespace ArchipeLemmeGo.Bot
 
             await RespondAsync(embed: embed);
         }
+
+        [SlashCommand("sync", "Syncs the item hint status and information")]
+        public async Task Sync()
+        {
+            var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
+
+            // create a client
+            var client = new ArchipelagoClient(archCtx.RoomInfo, archCtx.SlotInfo);
+
+            try
+            {
+                // connect
+                await client.ConnectAsync();
+
+                // Grab all hints
+                var hints = (await client.GetHints())
+                    .ToList();
+
+                // Update hint infos
+                RequestedHintInfo.UpdateHintInfos(archCtx.RoomInfo.RequestedHints, hints);
+
+                archCtx.RoomInfo.Save();
+
+                await RespondAsync("done!");
+            }
+            finally
+            {
+                await client.Disconnect();
+            }
+        }
     }
 
 }

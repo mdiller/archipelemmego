@@ -20,9 +20,13 @@ namespace ArchipeLemmeGo.Archipelago
 
         public string Item { get; set; }
 
-        public string Finder { get; set; }
+        public string FinderName { get; set; }
+        public string FinderMention { get; set; }
 
-        public string Reciever { get; set; }
+        public string RecieverName { get; set; }
+        public string RecieverMention { get; set; }
+
+        public bool IsFound { get; set; }
 
         /// <summary>
         /// weheee
@@ -35,14 +39,15 @@ namespace ArchipeLemmeGo.Archipelago
             var finderInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.FinderSlot);
             var recieverInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.SlotId == hint.RequesterSlot);
 
-            Reciever = $"Player in Slot {hint.RequesterSlot}";
-            Finder = $"Player in Slot {hint.FinderSlot}";
+            RecieverName = $"Player in Slot {hint.RequesterSlot}";
+            FinderName = $"Player in Slot {hint.FinderSlot}";
             Item = $"Item @id={hint.ItemId}";
             Location = $"Location @id={hint.LocationId}";
 
             if (finderInfo != null)
             {
-                Finder = finderInfo.ToSignature();
+                FinderName = finderInfo.ToSignature(false);
+                FinderMention = finderInfo.ToSignature();
                 Location = finderInfo.LocationLookup
                     .Where(kvp => kvp.Value == hint.LocationId)
                     .Select(kvp => kvp.Key)
@@ -51,7 +56,8 @@ namespace ArchipeLemmeGo.Archipelago
 
             if (recieverInfo != null)
             {
-                Reciever = recieverInfo.ToSignature();
+                RecieverName = recieverInfo.ToSignature(false);
+                RecieverMention = recieverInfo.ToSignature();
                 Item = recieverInfo.ItemLookup
                     .Where(kvp => kvp.Value == hint.ItemId)
                     .Select(kvp => kvp.Key)

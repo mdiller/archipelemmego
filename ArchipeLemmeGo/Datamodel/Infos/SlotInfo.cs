@@ -58,9 +58,9 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// Pretty print the name and @mention if avilable
         /// </summary>
         /// <returns></returns>
-        public string ToSignature()
+        public string ToSignature(bool doMention = true)
         {
-            if (DiscordId == 0)
+            if (DiscordId == 0 || doMention == false)
             {
                 return Name;
             }

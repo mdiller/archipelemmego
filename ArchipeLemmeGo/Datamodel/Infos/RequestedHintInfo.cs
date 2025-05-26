@@ -50,6 +50,62 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public int Count { get; set; }
 
         /// <summary>
+        /// Whether or not this hint has been found yet
+        /// </summary>
+        public bool IsFound { get; set; } = false;
+
+        /// <summary>
+        /// Whether or not the two hintinfos are referring to the same item
+        /// </summary>
+        public bool SameItem(RequestedHintInfo info)
+        {
+            return ItemId == info.ItemId && RequesterSlot == info.RequesterSlot;
+        }
+
+        /// <summary>
+        /// Updates the hintinfos with the found information from the hints
+        /// </summary>
+        public static void UpdateHintInfos(List<RequestedHintInfo> hintInfos, List<Hint> hints)
+        {
+            hints.ForEach(hint =>
+            {
+                var hintInfo = hintInfos.FirstOrDefault(h =>
+                            h.ItemId == hint.ItemId
+                            && h.LocationId == hint.LocationId
+                            && h.FinderSlot == hint.FindingPlayer
+                            && h.RequesterSlot == hint.ReceivingPlayer);
+                if (hintInfo != null)
+                {
+                    hintInfo.IsFound = hint.Found;
+                }
+            });
+            var finishedList = new List<string>();
+            var foundCountMap = new Dictionary<string, int>();
+            hintInfos.ForEach(hint =>
+            {
+                var key = $"{hint.RequesterSlot}_{hint.ItemId}";
+                if (hint.IsFound && !finishedList.Contains(key))
+                {
+                    if (!foundCountMap.ContainsKey(key))
+                    {
+                        foundCountMap[key] = 0;
+                    }
+                    foundCountMap[key]++;
+                    if (hint.Count <= foundCountMap[key])
+                    {
+                        finishedList.Add(key);
+                    }
+                }
+            });
+            // TODO: track new removals and report to user that they are done!
+            hintInfos.RemoveAll(hint =>
+            {
+                var key = $"{hint.RequesterSlot}_{hint.ItemId}";
+                return !hint.IsFound && finishedList.Contains(key);
+            });
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         /// <param name="roomInfo"></param>
@@ -69,7 +125,10 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                 RequesterSlot = hint.ReceivingPlayer,
                 FinderSlot = hint.FindingPlayer,
                 LocationId = hint.LocationId,
-                ItemId = hint.ItemId
+                ItemId = hint.ItemId,
+                Information = information,
+                Priority = priority,
+                Count = count
             };
         }
     }

@@ -1,4 +1,5 @@
-﻿using ArchipeLemmeGo.Archipelago;
+﻿using Archipelago.MultiClient.Net.Models;
+using ArchipeLemmeGo.Archipelago;
 using ArchipeLemmeGo.Datamodel.Infos;
 using Discord.Interactions;
 using System;
@@ -64,23 +65,46 @@ namespace ArchipeLemmeGo.Bot
                 }
 
                 var hintInfos = hints.Select(h => RequestedHintInfo.Create(h, information, priority, count)).ToList();
+                var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
-                // TODO: MAKE THE STRING BELOW SPECIFY HOW MANY WE NEED (also we dont need to print item every time)
+                // Update with new found info
+                RequestedHintInfo.UpdateHintInfos(hintInfos, hints);
 
-                var result = hintInfos.Count <= 1 ? "Added this request" : "Added the following requests";
-                result = $"__{result}:__";
-                // if we now have a hint (or list of hints), add them to the list of requests for this room?
-                foreach (var hint in hintInfos)
-                {
-                    var hintWrapper = hint.ToHintWrapper(archCtx.RoomInfo);
-                    result += $"\n - Need {hintWrapper.Item} which is from '{hintWrapper.Location}' ({hintWrapper.Finder})";
+                var isUpdate = false;
+                var isFinished = false;
+
+                if (archCtx.RoomInfo.RequestedHints.Any(h => h.SameItem(hintInfos.First())))
+                { // already have a hint for this item requested
+                    isUpdate = true;
+                    archCtx.RoomInfo.RequestedHints.RemoveAll(h => h.SameItem(hintInfos.First()));
                 }
 
-                // TODO: check before adding:
-                // - do these already exist? (if so update them with the new inputs)
-                // - have we already found all of them? (if so, tell the user and remove any existing ones from the list)
+                var foundCount = hintInfos.Count(h => h.IsFound);
+                if (foundCount >= count)
+                {
+                    isFinished = true;
+                    hintInfos.RemoveAll(h => !h.IsFound);
+                }
 
-                // TODO: add them to the list, then save
+                archCtx.RoomInfo.RequestedHints.AddRange(hintInfos);
+                archCtx.RoomInfo.Save();
+
+                var result = $"__Requested: {count} {hintWrappers.First().Item} [priority={priority}]__";
+
+                if (isFinished)
+                {
+                    result += $"Already have found {foundCount}/{count} of them! To request more, set count to a higher number when calling this command.";
+                }
+                else
+                {
+                    result += $"\n**Information:** {information}";
+                    result += $"\n**Locations:** (need {count - foundCount} of these)";
+                    // if we now have a hint (or list of hints), add them to the list of requests for this room?
+                    foreach (var hintWrapper in hintWrappers.Where(h => !h.HintInfo.IsFound))
+                    {
+                        result += $"\n • '{hintWrapper.Location}' ({hintWrapper.FinderMention})";
+                    }
+                }
 
                 await RespondAsync(result.Trim());
             }
@@ -90,10 +114,60 @@ namespace ArchipeLemmeGo.Bot
             }
         }
 
-        [SlashCommand("list", "List all the items you have requested and all the requests you have ")]
-        public async Task ListItems()
+        [SlashCommand("waiting", "List all the items are waiting on")]
+        public async Task ItemsWaiting()
         {
-            await RespondAsync("Here are the items...");
+            var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
+
+            var hintInfos = archCtx.RoomInfo.RequestedHints
+                .Where(h => h.RequesterSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
+                .OrderBy(h => h.ItemId)
+                .ToList();
+            var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
+
+            var result = "__Locations to get:__";
+            long itemId = -1;
+
+            foreach (var hintWrapper in hintWrappers)
+            {
+                if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
+                {
+                    result += $"\n**{hintWrapper.Item}:**";
+                    result += $" [prio={hintWrapper.HintInfo.Priority}] '{hintWrapper.HintInfo.Information}'";
+                    itemId = hintWrapper.HintInfo.ItemId;
+                }
+                result += $"\n • '{hintWrapper.Location}' ({hintWrapper.FinderName})";
+            }
+
+            await RespondAsync(result.Trim());
+        }
+
+        [SlashCommand("todo", "List all of the locations that you've been requested to do")]
+        public async Task ItemsTodo()
+        {
+            var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
+
+            var hintInfos = archCtx.RoomInfo.RequestedHints
+                .Where(h => h.FinderSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
+                .OrderBy(h => h.ItemId)
+                .ToList();
+            var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
+
+            var result = "__Waiting For:__";
+            long itemId = -1;
+
+            foreach (var hintWrapper in hintWrappers)
+            {
+                if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
+                {
+                    result += $"\nFor {hintWrapper.Item} ({hintWrapper.RecieverName}):";
+                    result += $" [prio={hintWrapper.HintInfo.Priority}] '{hintWrapper.HintInfo.Information}'";
+                    itemId = hintWrapper.HintInfo.ItemId;
+                }
+                result += $"\n • **{hintWrapper.Location}**";
+            }
+
+            await RespondAsync(result.Trim());
         }
     }
 }
