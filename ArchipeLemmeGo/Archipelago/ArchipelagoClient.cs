@@ -32,40 +32,110 @@ namespace ArchipeLemmeGo.Archipelago
 
         public async Task ConnectAsync()
         {
-            var result = await Task.Run(() =>
+            try
             {
-                _session = ArchipelagoSessionFactory.CreateSession(RoomInfo.Host, RoomInfo.Port);
-                // TO ADD THIS BACK IN FUTURE, MAKE SURE TO DO PROPERLY, CUZ WE CREATE NEW SESSION LATYER SOMETIMES
-                // _session.MessageLog.OnMessageReceived += m => Console.WriteLine($"[AP:{SlotInfo.Name}] {string.Join("__", m.Parts.Select(p => p.Text))}");
-
-                if (SlotInfo.Game == null)
-                { // If we dont have a game assigned, try em till we find one that works
-                    foreach (var game in RoomInfo.Games)
-                    {
-                        var result = _session.TryConnectAndLogin(game, SlotInfo.Name, ItemsHandlingFlags.AllItems, password: RoomInfo.Password);
-                        if (result is LoginSuccessful)
-                        {
-                            SlotInfo.Game = game;
-                            return true;
-                        }
-                        else
-                        {
-                            _session = ArchipelagoSessionFactory.CreateSession(RoomInfo.Host, RoomInfo.Port);
-                        }
-                    }
-                    return false;
-                }
-                else
+                var result = await Task.Run(() =>
                 {
-                    var result = _session.TryConnectAndLogin(SlotInfo.Game, SlotInfo.Name, ItemsHandlingFlags.AllItems, password: RoomInfo.Password);
+                    _session = ArchipelagoSessionFactory.CreateSession(RoomInfo.Host, RoomInfo.Port);
+                    // TO ADD THIS BACK IN FUTURE, MAKE SURE TO DO PROPERLY, CUZ WE CREATE NEW SESSION LATYER SOMETIMES
+                    // _session.MessageLog.OnMessageReceived += m => Console.WriteLine($"[AP:{SlotInfo.Name}] {string.Join("__", m.Parts.Select(p => p.Text))}");
 
-                    return result is LoginSuccessful;
+                    if (SlotInfo.Game == null)
+                    { // If we dont have a game assigned, try em till we find one that works
+                        foreach (var game in RoomInfo.Games)
+                        {
+                            var result = _session.TryConnectAndLogin(game, SlotInfo.Name, ItemsHandlingFlags.AllItems, password: RoomInfo.Password);
+                            if (result is LoginSuccessful)
+                            {
+                                SlotInfo.Game = game;
+                                return true;
+                            }
+                            else
+                            {
+                                _session = ArchipelagoSessionFactory.CreateSession(RoomInfo.Host, RoomInfo.Port);
+                            }
+                        }
+                        return false;
+                    }
+                    else
+                    {
+                        var result = _session.TryConnectAndLogin(SlotInfo.Game, SlotInfo.Name, ItemsHandlingFlags.AllItems, password: RoomInfo.Password);
+
+                        return result is LoginSuccessful;
+                    }
+                });
+                if (result == false)
+                {
+                    throw new ArchipelagoDisconnectedException(RoomInfo, SlotInfo);
                 }
-            });
-            if (result == false)
-            {
-                throw new ArchipelagoDisconnectedException(RoomInfo, SlotInfo);
             }
+            catch (Exception e) // TODO: fix this later to only point to the one we care about
+            {
+                Console.WriteLine($"CONNECTION ERROR: {e.GetType().Name}\n{e.Message}");
+                throw new UserError("Couldn't connect to the room. Try opening a lua console by clicking on your name on the webpage. Then try the command again.");
+            }
+        }
+
+        public async static Task<string> DoResync(ArchipelagoContext archCtx, bool announce = true)
+        {
+            // create a client
+            var client = new ArchipelagoClient(archCtx.RoomInfo, archCtx.SlotInfo);
+
+            try
+            {
+                // connect
+                await client.ConnectAsync();
+
+
+                // Grab all hints
+                var hints = (await client.GetHints())
+                    .ToList();
+
+                // Update hint infos
+                var removedHints = RequestedHintInfo.UpdateHintInfos(archCtx.RoomInfo.RequestedHints, hints);
+                var comparer = EqualityComparer<RequestedHintInfo>.Create(
+                    (a, b) => a.RequesterSlot == b.RequesterSlot && a.ItemId == b.ItemId,
+                    obj => HashCode.Combine(obj.LocationId, obj.ItemId)
+                );
+                removedHints = removedHints.Distinct(comparer).ToList();
+
+                archCtx.RoomInfo.Save();
+
+                if (announce)
+                {
+                    try
+                    {
+                        int currentUser = -1000;
+                        var result = "";
+                        removedHints = removedHints.OrderBy(h => h.RequesterSlot).ToList();
+                        removedHints.ForEach(h =>
+                        {
+                            var hintWrapper = h.ToHintWrapper(archCtx.RoomInfo);
+                            if (currentUser != h.RequesterSlot)
+                            {
+                                currentUser = h.RequesterSlot;
+                                result += $"{hintWrapper.RecieverMention} hey look ppl found stuff for u:\n";
+                            }
+
+                            result += $"- `{hintWrapper.Item}` (from: {hintWrapper.FinderName})\n";
+                        });
+                        return result;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Error while trying to announce resync: {e.GetType().Name}\n{e.Message}");
+                        var lines = removedHints
+                            .Select(h => h.ToHintWrapper(archCtx.RoomInfo))
+                            .Select(h => $"{h.RecieverMention} `{h.Item}` has been found for ya! (by: {h.FinderName})").ToList();
+                        return string.Join("\n", lines);
+                    }
+                }
+            }
+            finally
+            {
+                await client.Disconnect();
+            }
+            return "";
         }
 
         public int SlotId => _session.ConnectionInfo.Slot;

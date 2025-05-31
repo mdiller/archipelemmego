@@ -49,10 +49,22 @@ namespace ArchipeLemmeGo.Bot
             {
                 var ex = execResult.Exception;
 
+                if (ex.InnerException is UserError specificEx1)
+                {
+                    ex = ex.InnerException;
+                }
+
                 // Handle your specific exception type
                 if (ex is UserError specificEx)
                 {
-                    await context.Interaction.RespondAsync(specificEx.Message);
+                    if (context.Interaction.HasResponded)
+                    {
+                        await context.Interaction.FollowupAsync(specificEx.Message);
+                    }
+                    else
+                    {
+                        await context.Interaction.RespondAsync(specificEx.Message);
+                    }
                     return;
                 }
 

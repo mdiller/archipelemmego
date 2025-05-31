@@ -65,8 +65,10 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// <summary>
         /// Updates the hintinfos with the found information from the hints
         /// </summary>
-        public static void UpdateHintInfos(List<RequestedHintInfo> hintInfos, List<Hint> hints)
+        /// <returns>The list of hintinfos that were removed</returns>
+        public static List<RequestedHintInfo> UpdateHintInfos(List<RequestedHintInfo> hintInfos, List<Hint> hints)
         {
+            var removedList = new List<RequestedHintInfo>();
             hints.ForEach(hint =>
             {
                 var hintInfo = hintInfos.FirstOrDefault(h =>
@@ -97,12 +99,20 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                     }
                 }
             });
-            // TODO: track new removals and report to user that they are done!
+            hintInfos.ForEach(hint =>
+            {
+                var key = $"{hint.RequesterSlot}_{hint.ItemId}";
+                if (hint.IsFound && finishedList.Contains(key))
+                {
+                    removedList.Add(hint);
+                }
+            });
             hintInfos.RemoveAll(hint =>
             {
                 var key = $"{hint.RequesterSlot}_{hint.ItemId}";
                 return !hint.IsFound && finishedList.Contains(key);
             });
+            return removedList;
         }
 
         /// <summary>

@@ -80,14 +80,7 @@ namespace ArchipeLemmeGo.Archipelago
 
             try
             {
-                try
-                {
-                    await client.ConnectAsync();
-                }
-                catch (ArchipelagoDisconnectedException)
-                {
-                    throw new UserError("Unable to connect to the room with that slot name");
-                }
+                await client.ConnectAsync();
                 var dataPackage = await client.GetDataPackageAsync();
                 var gamePackage = dataPackage.DataPackage.Games[slotInfo.Game];
 

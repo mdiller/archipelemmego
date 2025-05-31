@@ -1,4 +1,5 @@
-﻿using ArchipeLemmeGo.Archipelago;
+﻿using Archipelago.MultiClient.Net.Models;
+using ArchipeLemmeGo.Archipelago;
 using Discord;
 using Discord.Interactions;
 using System;
@@ -26,6 +27,18 @@ namespace ArchipeLemmeGo.Bot
             }
 
             var items = slotInfo.Items;
+
+            if (parameter.Name == "existing_item")
+            {
+                var reverseMap = slotInfo.ItemLookup
+                    .ToDictionary(kv => kv.Value, kv => kv.Key);
+                items = archCtx.RoomInfo.RequestedHints
+                    .Where(h => h.RequesterSlot == slotInfo.SlotId)
+                    .Select(h => h.ItemId)
+                    .Distinct()
+                    .Select(id => reverseMap[id])
+                    .ToArray();
+            }
 
             var currentValue = autocompleteInteraction.Data.Current.Value?.ToString()?.ToLower();
 

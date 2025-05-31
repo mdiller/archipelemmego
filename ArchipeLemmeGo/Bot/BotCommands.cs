@@ -16,9 +16,11 @@ namespace ArchipeLemmeGo.Bot
         {
             var archCtx = ArchipelagoContext.FromCtx(Context, true);
 
+            await DeferAsync();
+
             if (archCtx != null && !archCtx.IsUserAdmin(Context.User.Id))
             {
-                await RespondAsync($"This channel has already been linked to a room.");
+                await FollowupAsync($"This channel has already been linked to a room.");
                 return;
             }
 
@@ -28,7 +30,7 @@ namespace ArchipeLemmeGo.Bot
             channelLinker.ChannelAssignments[Context.Channel.Id] = roomInfo.Uri;
             channelLinker.Save();
 
-            await RespondAsync($"Room has been set up! Internal Seed: `{roomInfo.Seed}`");
+            await FollowupAsync($"Room has been set up! Internal Seed: `{roomInfo.Seed}`");
         }
 
         [SlashCommand("register", "Register a player with the bot.")]
@@ -38,22 +40,24 @@ namespace ArchipeLemmeGo.Bot
         {
             var archCtx = ArchipelagoContext.FromCtx(Context);
 
+            await DeferAsync();
+
             if (user != null && !archCtx.IsUserAdmin(Context.User.Id))
             {
-                await RespondAsync($"Only the person who setup the room can register other people for themselves.");
+                await FollowupAsync($"Only the person who setup the room can register other people for themselves.");
                 return;
             }
 
             if (archCtx.SlotInfo != null && user == null &&!archCtx.IsUserAdmin(Context.User.Id))
             {
-                await RespondAsync($"That slot has already been linked to a user. If it was linked to the wrong user, tell the person who setup the room to fix it.");
+                await FollowupAsync($"That slot has already been linked to a user. If it was linked to the wrong user, tell the person who setup the room to fix it.");
                 return;
             }
             var targetUser = user ?? Context.User;
 
             await ArchipelagoService.RegisterSlotInfo(targetUser.Id, archCtx.RoomInfo, playerName);
 
-            await RespondAsync($"Registered player `{playerName}` to {targetUser.Username}");
+            await FollowupAsync($"Registered player `{playerName}` to {targetUser.Username}");
         }
 
         [SlashCommand("status", "Show the current status of this room.")]
@@ -78,29 +82,11 @@ namespace ArchipeLemmeGo.Bot
         {
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
 
-            // create a client
-            var client = new ArchipelagoClient(archCtx.RoomInfo, archCtx.SlotInfo);
+            await DeferAsync();
 
-            try
-            {
-                // connect
-                await client.ConnectAsync();
+            var announceText = await ArchipelagoClient.DoResync(archCtx);
 
-                // Grab all hints
-                var hints = (await client.GetHints())
-                    .ToList();
-
-                // Update hint infos
-                RequestedHintInfo.UpdateHintInfos(archCtx.RoomInfo.RequestedHints, hints);
-
-                archCtx.RoomInfo.Save();
-
-                await RespondAsync("done!");
-            }
-            finally
-            {
-                await client.Disconnect();
-            }
+            await FollowupAsync("__done!__\n" + announceText);
         }
     }
 
