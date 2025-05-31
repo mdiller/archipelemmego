@@ -94,7 +94,7 @@ namespace ArchipeLemmeGo.Bot
                 archCtx.RoomInfo.RequestedHints.AddRange(hintInfos);
                 archCtx.RoomInfo.Save();
 
-                var result = $"__Requested: {count} {hintWrappers.First().Item} [priority={priority}]__";
+                var result = $"__Requested: {count} `{hintWrappers.First().Item}` [priority={priority}]__";
 
                 if (isFinished)
                 {
@@ -174,7 +174,7 @@ namespace ArchipeLemmeGo.Bot
             {
                 if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
                 {
-                    result += $"\n**{hintWrapper.Item}:**";
+                    result += $"\n`{hintWrapper.Item}`:";
                     result += $" [prio={hintWrapper.HintInfo.Priority}] {hintWrapper.HintInfo.Information}";
                     itemId = hintWrapper.HintInfo.ItemId;
                 }
@@ -212,7 +212,7 @@ namespace ArchipeLemmeGo.Bot
             {
                 if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
                 {
-                    result += $"\nFor {hintWrapper.Item} ({hintWrapper.RecieverName}):";
+                    result += $"\nFor `{hintWrapper.Item}` ({hintWrapper.RecieverName}):";
                     result += $" [prio={hintWrapper.HintInfo.Priority}] {hintWrapper.HintInfo.Information}";
                     itemId = hintWrapper.HintInfo.ItemId;
                 }
