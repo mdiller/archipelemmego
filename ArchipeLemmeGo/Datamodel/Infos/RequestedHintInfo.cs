@@ -102,7 +102,7 @@ namespace ArchipeLemmeGo.Datamodel.Infos
             hintInfos.ForEach(hint =>
             {
                 var key = $"{hint.RequesterSlot}_{hint.ItemId}";
-                if (hint.IsFound && finishedList.Contains(key))
+                if (!hint.IsFound && finishedList.Contains(key))
                 {
                     removedList.Add(hint);
                 }
