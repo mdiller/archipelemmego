@@ -65,7 +65,7 @@ namespace ArchipeLemmeGo.Bot
                 // If there still isnt, give up
                 if (!hints.Any())
                 {
-                    await FollowupAsync($"I wasn't able to get the hint for that item. ¯\\_(ツ)_/¯.");
+                    await FollowupAsync($"I wasn't able to get the hint for that item. ¯\\_(ツ)_/¯. Maybe open the lua console and see if u can find it there or what it shows when you run this command? idk what goin wrong here bro");
                     return;
                 }
 
