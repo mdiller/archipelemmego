@@ -1,0 +1,7 @@
+services:
+  main:
+    restart: unless-stopped
+    container_name: Archipelemmego
+    build: .
+    volumes:
+      - ./resources:/app/resources
