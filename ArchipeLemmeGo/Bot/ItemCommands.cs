@@ -201,7 +201,8 @@ namespace ArchipeLemmeGo.Bot
 
             var hintInfos = archCtx.RoomInfo.RequestedHints
                 .Where(h => h.FinderSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
-                .OrderBy(h => h.ItemId)
+                .OrderBy(h => h.Priority)
+                .Reverse()
                 .ToList();
             var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
