@@ -61,6 +61,12 @@ namespace ArchipeLemmeGo.Bot
                 {
                     messageToSend = specificEx.Message;
                 }
+                else
+                {
+                    // Log the exception or handle it as needed
+                    Console.WriteLine($"[Error] Exception in command {command.Name}: {ex}");
+                    Console.WriteLine(ex.StackTrace);
+                }
 
                 if (context.Interaction.HasResponded)
                 {

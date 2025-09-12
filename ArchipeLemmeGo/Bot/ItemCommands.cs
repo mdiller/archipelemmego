@@ -18,6 +18,41 @@ namespace ArchipeLemmeGo.Bot
     [Group("item", "Commands related to archipelago items")]
     public class ItemCommands : InteractionModuleBase<SocketInteractionContext>
     {
+        public async Task SendPossiblyLargeMessage(string message)
+        {
+            var charLimit = 1990;
+            if (message.Length <= charLimit)
+            {
+                await FollowupAsync(message);
+                return;
+            }
+            else
+            {
+                var parts = new List<string>();
+                var currentPart = new StringBuilder();
+                foreach (var line in message.Split('\n'))
+                {
+                    if (currentPart.Length + line.Length + 1 > charLimit)
+                    {
+                        currentPart.AppendLine("...");
+                        parts.Add(currentPart.ToString());
+                        currentPart.Clear();
+                        currentPart.AppendLine("...");
+                    }
+                    currentPart.AppendLine(line);
+                }
+                if (currentPart.Length > 0)
+                {
+                    parts.Add(currentPart.ToString());
+                }
+                foreach (var part in parts)
+                {
+                    await FollowupAsync(part);
+                }   
+            }
+
+        }
+
         [SlashCommand("request", "Submit a request for an item.")]
         public async Task RequestAsync(
             [Summary(description: "The item to request."), Autocomplete(typeof(ItemAutocompleteHandler))] string item_name,
@@ -189,7 +224,8 @@ namespace ArchipeLemmeGo.Bot
                 result += $"\n • '{hintInfo.Location}' ({hintInfo.Location.Player.Name})";
             }
 
-            await FollowupAsync(result.Trim());
+
+            await SendPossiblyLargeMessage(result.Trim());
         }
 
         [SlashCommand("todo", "List all of the locations that you've been requested to do")]
@@ -228,7 +264,7 @@ namespace ArchipeLemmeGo.Bot
                 result += $"\n • **{hintInfo.Location}**";
             }
 
-            await FollowupAsync(result.Trim());
+            await SendPossiblyLargeMessage(result.Trim());
         }
     }
 }
