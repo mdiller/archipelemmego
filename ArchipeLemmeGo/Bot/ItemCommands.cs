@@ -1,5 +1,7 @@
 ﻿using Archipelago.MultiClient.Net.Models;
 using ArchipeLemmeGo.Archipelago;
+using ArchipeLemmeGo.Bot.AutocompleteHandlers;
+using ArchipeLemmeGo.Datamodel.Arch;
 using ArchipeLemmeGo.Datamodel.Infos;
 using Discord;
 using Discord.Interactions;
@@ -18,23 +20,23 @@ namespace ArchipeLemmeGo.Bot
     {
         [SlashCommand("request", "Submit a request for an item.")]
         public async Task RequestAsync(
-            [Summary(description: "The item to request."), Autocomplete(typeof(ExampleAutocompleteHandler))] string item,
+            [Summary(description: "The item to request."), Autocomplete(typeof(ItemAutocompleteHandler))] string item_name,
             [Summary(description: "Priority (1 = low, 10 = high).")] int priority,
             [Summary(description: "The information or context for this request.")] string information = "",
-            [Summary(description: "How many of this item are needed")] int count = 1)
+            [Summary(description: "How many of this item are needed (defaults to all)")] int count = -1)
         {
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
+            var item = ArchItem.FromDiscString(item_name, archCtx.RoomInfo);
 
             await DeferAsync();
 
-            if (!archCtx.SlotInfo.ItemLookup.ContainsKey(item))
+            if (!archCtx.SlotInfo.ItemLookup.ContainsValue(item.ItemId))
             {
                 await FollowupAsync($"Couldn't find an item with that name.");
                 return;
             }
-            //await DeferAsync();
 
-            var itemId = archCtx.SlotInfo.ItemLookup[item];
+            var itemId = item.ItemId;
 
             // create a client
             var client = new ArchipelagoClient(archCtx.RoomInfo, archCtx.SlotInfo);
@@ -69,8 +71,12 @@ namespace ArchipeLemmeGo.Bot
                     return;
                 }
 
-                var hintInfos = hints.Select(h => RequestedHintInfo.Create(h, information, priority, count)).ToList();
-                var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
+                if (count == -1)
+                {
+                    count = hints.Count;
+                }
+
+                var hintInfos = hints.Select(h => RequestedHintInfo.Create(h, information, priority, count, archCtx.RoomInfo)).ToList();
 
                 // Update with new found info
                 RequestedHintInfo.UpdateHintInfos(hintInfos, hints);
@@ -94,7 +100,7 @@ namespace ArchipeLemmeGo.Bot
                 archCtx.RoomInfo.RequestedHints.AddRange(hintInfos);
                 archCtx.RoomInfo.Save();
 
-                var result = $"__Requested: {count} `{hintWrappers.First().Item}` [priority={priority}]__";
+                var result = $"__Requested: {count} `{hintInfos.First().Item.Name}` [priority={priority}]__";
 
                 if (isFinished)
                 {
@@ -108,9 +114,9 @@ namespace ArchipeLemmeGo.Bot
                     }
                     result += $"\n**Locations:** (need {count - foundCount} of these)";
                     // if we now have a hint (or list of hints), add them to the list of requests for this room?
-                    foreach (var hintWrapper in hintWrappers.Where(h => !h.HintInfo.IsFound))
+                    foreach (var hintInfo in hintInfos.Where(h => !h.IsFound))
                     {
-                        result += $"\n • '{hintWrapper.Location}' from {hintWrapper.FinderMention}";
+                        result += $"\n • '{hintInfo.Location}' from {hintInfo.Location.Player.Mention}";
                     }
                 }
 
@@ -125,17 +131,19 @@ namespace ArchipeLemmeGo.Bot
 
         [SlashCommand("unrequest", "Remove an item request.")]
         public async Task UnRequestAsync(
-            [Summary(description: "The item to remove."), Autocomplete(typeof(ExampleAutocompleteHandler))] string existing_item)
+            [Summary(description: "The item to remove."), Autocomplete(typeof(ItemAutocompleteHandler))] string existing_item)
         {
+            await DeferAsync();
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
+            var item = ArchItem.FromDiscString(existing_item, archCtx.RoomInfo);
 
-            if (!archCtx.SlotInfo.ItemLookup.ContainsKey(existing_item))
+            if (!archCtx.SlotInfo.ItemLookup.ContainsValue(item.ItemId))
             {
-                await RespondAsync($"Couldn't find this item in the list of items that you have requested.");
+                await FollowupAsync($"Couldn't find this item in the list of items that you have requested.");
                 return;
             }
 
-            var item_id = archCtx.SlotInfo.ItemLookup[existing_item];
+            var item_id = item.ItemId;
             
             var roomInfo = archCtx.RoomInfo;
             var slotInfo = archCtx.SlotInfo;
@@ -144,12 +152,13 @@ namespace ArchipeLemmeGo.Bot
                 .RemoveAll(h => h.RequesterSlot == slotInfo.SlotId && h.ItemId == item_id && !h.IsFound);
             roomInfo.Save();
 
-            await RespondAsync($"Done!");
+            await FollowupAsync($"Done!");
         }
 
         [SlashCommand("waiting", "List all the items are waiting on")]
         public async Task ItemsWaiting()
         {
+            await DeferAsync();
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
             string announceText;
             try
@@ -165,28 +174,28 @@ namespace ArchipeLemmeGo.Bot
                 .Where(h => h.RequesterSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
                 .OrderBy(h => h.ItemId)
                 .ToList();
-            var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
             var result = announceText + "\n\n__Now Waiting For:__";
             long itemId = -1;
 
-            foreach (var hintWrapper in hintWrappers)
+            foreach (var hintInfo in hintInfos)
             {
-                if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
+                if (itemId == -1 || itemId != hintInfo.Item.ItemId)
                 {
-                    result += $"\n`{hintWrapper.Item}`:";
-                    result += $" [prio={hintWrapper.HintInfo.Priority}] {hintWrapper.HintInfo.Information}";
-                    itemId = hintWrapper.HintInfo.ItemId;
+                    result += $"\n`{hintInfo.Item}`:";
+                    result += $" [prio={hintInfo.Priority}] {hintInfo.Information}";
+                    itemId = hintInfo.Item.ItemId;
                 }
-                result += $"\n • '{hintWrapper.Location}' ({hintWrapper.FinderName})";
+                result += $"\n • '{hintInfo.Location}' ({hintInfo.Location.Player.Name})";
             }
 
-            await RespondAsync(result.Trim());
+            await FollowupAsync(result.Trim());
         }
 
         [SlashCommand("todo", "List all of the locations that you've been requested to do")]
         public async Task ItemsTodo()
         {
+            await DeferAsync();
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
 
             string announceText;
@@ -204,23 +213,22 @@ namespace ArchipeLemmeGo.Bot
                 .OrderBy(h => h.Priority)
                 .Reverse()
                 .ToList();
-            var hintWrappers = hintInfos.Select(h => h.ToHintWrapper(archCtx.RoomInfo)).ToList();
 
             var result = announceText + "\n\n__Things to do:__";
             long itemId = -1;
 
-            foreach (var hintWrapper in hintWrappers)
+            foreach (var hintInfo in hintInfos)
             {
-                if (itemId == -1 || itemId != hintWrapper.HintInfo.ItemId)
+                if (itemId == -1 || itemId != hintInfo.Item.ItemId)
                 {
-                    result += $"\nFor `{hintWrapper.Item}` ({hintWrapper.RecieverName}):";
-                    result += $" [prio={hintWrapper.HintInfo.Priority}] {hintWrapper.HintInfo.Information}";
-                    itemId = hintWrapper.HintInfo.ItemId;
+                    result += $"\nFor `{hintInfo.Item}` ({hintInfo.Item.Player.Name}):";
+                    result += $" [prio={hintInfo.Priority}] {hintInfo.Information}";
+                    itemId = hintInfo.Item.ItemId;
                 }
-                result += $"\n • **{hintWrapper.Location}**";
+                result += $"\n • **{hintInfo.Location}**";
             }
 
-            await RespondAsync(result.Trim());
+            await FollowupAsync(result.Trim());
         }
     }
 }

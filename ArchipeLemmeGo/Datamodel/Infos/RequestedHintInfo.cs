@@ -1,9 +1,11 @@
 ﻿using Archipelago.MultiClient.Net.Models;
 using ArchipeLemmeGo.Archipelago;
+using ArchipeLemmeGo.Datamodel.Arch;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace ArchipeLemmeGo.Datamodel.Infos
@@ -14,24 +16,79 @@ namespace ArchipeLemmeGo.Datamodel.Infos
     public class RequestedHintInfo
     {
         /// <summary>
+        /// The Item that is being requested
+        /// </summary>
+        [JsonIgnore]
+        public ArchItem Item { get; set; }
+
+        /// <summary>
+        /// The location needed to unlock the item
+        /// </summary>
+        [JsonIgnore]
+        public ArchLocation Location{ get; set; }
+
+        /// <summary>
         /// The slot ID of the person who requested this
         /// </summary>
-        public int RequesterSlot { get; set; }
+        public int RequesterSlot
+        {
+            get => Item?.Slot ?? -1;
+            set {
+                if (Item == null)
+                {
+                    Item = new ArchItem();
+                }
+                Item.Slot = value;
+            }
+        }
 
         /// <summary>
         /// The slot ID of the person who can find this
         /// </summary>
-        public int FinderSlot { get; set; }
-        
+        public int FinderSlot
+        {
+            get => Location?.Slot ?? -1;
+            set
+            {
+                if (Location == null)
+                {
+                    Location = new ArchLocation();
+                }
+                Location.Slot = value;
+            }
+        }
+
         /// <summary>
         /// The ID of the location that needs to be unlocked
         /// </summary>
-        public long LocationId { get; set; }
+        public long LocationId
+        {
+            get => Location?.LocationId ?? -1;
+            set
+            {
+                if (Location == null)
+                {
+                    Location = new ArchLocation();
+                }
+                Location.LocationId = value;
+            }
+        }
 
         /// <summary>
         /// The ItemId of the item that we're looking for
         /// </summary>
-        public long ItemId { get; set; }
+        public long ItemId
+        {
+            get => Item?.ItemId ?? -1;
+            set
+            {
+                if (Item == null)
+                {
+                    Item = new ArchItem();
+                }
+                Item.ItemId = value;
+            }
+        }
 
 
         /// <summary>
@@ -45,9 +102,20 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public int Priority { get; set; }
 
         /// <summary>
-        /// The number of this item that are needed
+        /// The progression level requested for this item
         /// </summary>
-        public int Count { get; set; }
+        public int Count
+        {
+            get => Item?.ProgressionLevel ?? 0;
+            set
+            {
+                if (Item == null)
+                {
+                    Item = new ArchItem();
+                }
+                Item.ProgressionLevel = value;
+            }
+        }
 
         /// <summary>
         /// Whether or not this hint has been found yet
@@ -120,25 +188,33 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// </summary>
         /// <param name="roomInfo"></param>
         /// <returns></returns>
-        public HintWrapper ToHintWrapper(RoomInfo roomInfo)
-        {
-            return new HintWrapper(this, roomInfo);
-        }
+        //public HintWrapper ToHintWrapper(RoomInfo roomInfo)
+        //{
+        //    return new HintWrapper(this, roomInfo);
+        //}
 
         /// <summary>
         /// Creates a RequestedHintInfo from the hint and the input args
         /// </summary>
-        public static RequestedHintInfo Create(Hint hint, string information, int priority, int count)
+        public static RequestedHintInfo Create(Hint hint, string information, int priority, int progressionLevel, RoomInfo roomInfo)
         {
             return new RequestedHintInfo
             {
-                RequesterSlot = hint.ReceivingPlayer,
-                FinderSlot = hint.FindingPlayer,
-                LocationId = hint.LocationId,
-                ItemId = hint.ItemId,
+                Item = new ArchItem
+                {
+                    ItemId = hint.ItemId,
+                    Slot = hint.ReceivingPlayer,
+                    ProgressionLevel = progressionLevel,
+                    RoomInfo = roomInfo
+                },
+                Location = new ArchLocation
+                {
+                    LocationId = hint.ItemId,
+                    Slot = hint.ReceivingPlayer,
+                    RoomInfo = roomInfo
+                },
                 Information = information,
-                Priority = priority,
-                Count = count
+                Priority = priority
             };
         }
     }

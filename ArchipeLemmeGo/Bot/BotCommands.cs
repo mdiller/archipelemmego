@@ -63,6 +63,7 @@ namespace ArchipeLemmeGo.Bot
         [SlashCommand("status", "Show the current status of this room.")]
         public async Task StatusAsync()
         {
+            await DeferAsync();
             var archCtx = ArchipelagoContext.FromCtx(Context);
 
             var embed = new EmbedBuilder()
@@ -74,15 +75,15 @@ namespace ArchipeLemmeGo.Bot
                 .WithColor(Color.Blue)
                 .Build();
 
-            await RespondAsync(embed: embed);
+            await FollowupAsync(embed: embed);
         }
 
         [SlashCommand("sync", "Syncs the item hint status and information")]
         public async Task Sync()
         {
-            var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
-
             await DeferAsync();
+
+            var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
 
             var announceText = await ArchipelagoClient.DoResync(archCtx);
 

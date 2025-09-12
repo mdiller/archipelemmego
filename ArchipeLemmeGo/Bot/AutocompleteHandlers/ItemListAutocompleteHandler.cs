@@ -1,5 +1,6 @@
 ﻿using Archipelago.MultiClient.Net.Models;
 using ArchipeLemmeGo.Archipelago;
+using ArchipeLemmeGo.Datamodel.Arch;
 using Discord;
 using Discord.Interactions;
 using System;
@@ -8,9 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArchipeLemmeGo.Bot
+namespace ArchipeLemmeGo.Bot.AutocompleteHandlers
 {
-    public class ExampleAutocompleteHandler : AutocompleteHandler
+    public class ItemListAutocompleteHandler : AutocompleteHandler
     {
         public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services)
         {
@@ -50,7 +51,12 @@ namespace ArchipeLemmeGo.Bot
             // Create a collection with suggestions for autocomplete
             IEnumerable<AutocompleteResult> results = items
                 .Where(i => i.ToLower().Contains(currentValue))
-                .Select(i => new AutocompleteResult(i, i));
+                .Select(i => new AutocompleteResult(i, new List<ArchItem>{ new ArchItem
+                {
+                    Slot = slotInfo.SlotId,
+                    ItemId = slotInfo.ItemLookup[i],
+                    RoomInfo = archCtx.RoomInfo
+                } }));
 
             // max - 25 suggestions at a time (API limit)
             return AutocompletionResult.FromSuccess(results.Take(25));

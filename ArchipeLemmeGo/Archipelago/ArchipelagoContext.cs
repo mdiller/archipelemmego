@@ -45,7 +45,12 @@ namespace ArchipeLemmeGo.Archipelago
             }
         }
 
-
+        public static RoomInfo LoadRoomInfo(InfoUri roomUri)
+        {
+            var roomInfo = roomUri.Load<RoomInfo>();
+            roomInfo.HydrateArchStuff();
+            return roomInfo;
+        }
 
         public static ArchipelagoContext FromChannelUser(ulong channelId, ulong userId, bool allowNull = false, bool requireRegistered = false)
         {
@@ -65,7 +70,7 @@ namespace ArchipeLemmeGo.Archipelago
 
             var roomUri = discLinker.ChannelAssignments[channelId];
 
-            var roomInfo = roomUri.Load<RoomInfo>();
+            var roomInfo = LoadRoomInfo(roomUri);
             var authorId = userId;
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
 
@@ -105,7 +110,7 @@ namespace ArchipeLemmeGo.Archipelago
 
             var roomUri = discLinker.ChannelAssignments[channelId];
 
-            var roomInfo = roomUri.Load<RoomInfo>();
+            var roomInfo = LoadRoomInfo(roomUri);
             var authorId = ctx.User.Id;
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
 

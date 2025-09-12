@@ -55,6 +55,11 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public ulong DiscordId { get; set; }
 
         /// <summary>
+        /// Shorthand for ToSignature()
+        /// </summary>
+        public string Mention => ToSignature();
+
+        /// <summary>
         /// Pretty print the name and @mention if avilable
         /// </summary>
         /// <returns></returns>

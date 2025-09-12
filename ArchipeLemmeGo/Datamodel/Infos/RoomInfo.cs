@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Archipelago.MultiClient.Net.Models;
+using ArchipeLemmeGo.Datamodel.Arch;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -54,5 +56,59 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         /// The current list of requested hints
         /// </summary>
         public List<RequestedHintInfo> RequestedHints { get; set; } = new List<RequestedHintInfo>();
+
+        /// <summary>
+        /// The list of dependancies
+        /// </summary>
+        public List<DependancyLink> Dependancies { get; set; } = new List<DependancyLink>();
+
+        /// <summary>
+        /// Gets the name of a location
+        /// </summary>
+        public string? GetName(ArchItem item)
+        {
+            return SlotInfos.FirstOrDefault(s => s.SlotId == item.Slot)?
+                .ItemLookup?
+                .Where(kvp => kvp.Value == item.ItemId)?
+                .Select(kvp => kvp.Key)?
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Gets the name of a location
+        /// </summary>
+        public string? GetName(ArchLocation location)
+        {
+            return SlotInfos.FirstOrDefault(s => s.SlotId == location.Slot)?
+                .LocationLookup?
+                .Where(kvp => kvp.Value == location.LocationId)?
+                .Select(kvp => kvp.Key)?
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Gets the slotinfo for the given slot
+        /// </summary>
+        public SlotInfo? GetSlotInfo(int slotId)
+        {
+            return SlotInfos.FirstOrDefault(s => s.SlotId == slotId);
+        }
+
+        /// <summary>
+        /// Hydrates all the archipelago items in this room with the roominfo they need to print stuff etc
+        /// </summary>
+        public void HydrateArchStuff()
+        {
+            RequestedHints.ForEach(h =>
+            {
+                h.Item.RoomInfo = this;
+                h.Location.RoomInfo = this;
+            });
+            Dependancies.ForEach(d =>
+            {
+                d.Dependant.RoomInfo = this;
+                d.Prerequisites.ForEach(i => i.RoomInfo = this);
+            });
+        }
     }
 }

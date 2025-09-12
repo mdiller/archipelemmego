@@ -40,7 +40,7 @@ namespace ArchipeLemmeGo.Archipelago
             {
                 if (allowExisting)
                 {
-                    var existingRoomInfo = roomInfo.Uri.Load<RoomInfo>();
+                    var existingRoomInfo = ArchipelagoContext.LoadRoomInfo(roomInfo.Uri);
                     existingRoomInfo.Host = host;
                     existingRoomInfo.Port = port;
                     existingRoomInfo.Save();

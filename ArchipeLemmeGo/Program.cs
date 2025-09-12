@@ -10,17 +10,13 @@ namespace ArchipeLemmeGo
         {
             Console.WriteLine("Hello, World!");
 
-            //var roomInfo = await ArchipelagoService.RegisterRoomInfo("archipelago.gg", 60164);
-            //Console.WriteLine(roomInfo.Seed);
-
-            //// await ArchipelagoService.RegisterSlotInfo(roomInfo, "Malcolm1");
-            //await ArchipelagoService.RegisterSlotInfo(roomInfo, "Malcolm2");
-            //await ArchipelagoService.RegisterSlotInfo(roomInfo, "Malcolm3");
-
 
             var token = BotInfo.BotToken;
             var botManager = new BotManager();
             await botManager.Startup(token);
+
+            //var tree = TreeRenderer.MakeSample(); // or build your own using AddChild(...)
+            //TreeRenderer.Render(tree, 900, 600, "my_tree.png");
         }
     }
 }

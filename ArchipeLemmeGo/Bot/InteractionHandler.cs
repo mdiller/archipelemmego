@@ -54,22 +54,22 @@ namespace ArchipeLemmeGo.Bot
                     ex = ex.InnerException;
                 }
 
+                var messageToSend = $"EXCEPTION OCCURRED OH NO:\n```\n{ex.GetType().FullName}:\n{ex.Message}\n```";
+
                 // Handle your specific exception type
                 if (ex is UserError specificEx)
                 {
-                    if (context.Interaction.HasResponded)
-                    {
-                        await context.Interaction.FollowupAsync(specificEx.Message);
-                    }
-                    else
-                    {
-                        await context.Interaction.RespondAsync(specificEx.Message);
-                    }
-                    return;
+                    messageToSend = specificEx.Message;
                 }
 
-                // Generic fallback
-                await context.Interaction.RespondAsync($"EXCEPTION OCCURRED OH NO:\n```\n{ex.GetType().FullName}:\n{ex.Message}\n```");
+                if (context.Interaction.HasResponded)
+                {
+                    await context.Interaction.FollowupAsync(messageToSend);
+                }
+                else
+                {
+                    await context.Interaction.RespondAsync(messageToSend);
+                }
             }
         }
     }

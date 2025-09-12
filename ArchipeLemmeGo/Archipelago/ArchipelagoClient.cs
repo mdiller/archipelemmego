@@ -110,14 +110,13 @@ namespace ArchipeLemmeGo.Archipelago
                         removedHints = removedHints.OrderBy(h => h.RequesterSlot).ToList();
                         removedHints.ForEach(h =>
                         {
-                            var hintWrapper = h.ToHintWrapper(archCtx.RoomInfo);
                             if (currentUser != h.RequesterSlot)
                             {
                                 currentUser = h.RequesterSlot;
-                                result += $"{hintWrapper.RecieverMention} hey look ppl found stuff for u:\n";
+                                result += $"{h.Item.Player.Mention} hey look ppl found stuff for u:\n";
                             }
 
-                            result += $"- `{hintWrapper.Item}` (from: {hintWrapper.FinderName})\n";
+                            result += $"- `{h.Item.Name}` (from: {h.Location.Player.Name})\n";
                         });
                         return result;
                     }
@@ -125,8 +124,7 @@ namespace ArchipeLemmeGo.Archipelago
                     {
                         Console.WriteLine($"Error while trying to announce resync: {e.GetType().Name}\n{e.Message}");
                         var lines = removedHints
-                            .Select(h => h.ToHintWrapper(archCtx.RoomInfo))
-                            .Select(h => $"{h.RecieverMention} `{h.Item}` has been found for ya! (by: {h.FinderName})").ToList();
+                            .Select(h => $"{h.Item.Player.Mention} `{h.Item.Name}` has been found for ya! (by: {h.Location.Player.Name})").ToList();
                         return string.Join("\n", lines);
                     }
                 }
