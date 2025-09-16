@@ -210,7 +210,7 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                 Location = new ArchLocation
                 {
                     LocationId = hint.ItemId,
-                    Slot = hint.ReceivingPlayer,
+                    Slot = hint.FindingPlayer,
                     RoomInfo = roomInfo
                 },
                 Information = information,
