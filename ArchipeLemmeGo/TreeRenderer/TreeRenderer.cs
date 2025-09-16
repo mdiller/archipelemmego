@@ -9,6 +9,10 @@ public static class TreeRenderer
     private static readonly SKColor TextColor = SKColor.Parse("#e9e9ea");
     private static readonly SKColor EdgeColor = SKColor.Parse("#323339");
 
+    // --- Label background ---
+    private const float LabelPadding = 2f;
+    private static readonly SKColor LabelBackground = SKColor.Parse("#1e1f24");
+
     // --- Public enums ---
     public enum NodeShape { Circle, Rectangle, Hexagon }
     public enum NodePalette { Green, Yellow, Grey, Blue, Red }
@@ -31,7 +35,6 @@ public static class TreeRenderer
             Palette = palette;
         }
 
-        // Convenience: add and return the child so callers can chain.
         public TreeNode AddChild(string id, string label, NodeShape shape = NodeShape.Circle, NodePalette palette = NodePalette.Grey)
         {
             var child = new TreeNode(id, label, shape, palette);
@@ -47,22 +50,21 @@ public static class TreeRenderer
     }
 
     // --- Public render entrypoint ---
-    // Layout params: levelHeight & hSpacing are reasonable defaults for typical 800x600 trees.
-    public static void Render(Tree tree, int width, int height, string path, float nodeRadius = 40f, float levelHeight = 110f, float hSpacing = 26f)
+    public static void Render(Tree tree, int width, int height, string path, float nodeRadius = 40f, float levelHeight = 110f, float nodeWidthPerLeaf = 80f)
     {
         using var bmp = new SKBitmap(width, height);
         using var canvas = new SKCanvas(bmp);
         canvas.Clear(Background);
 
-        // 1) Layout (compute positions)
-        var positions = LayoutTree(tree.Root, width, height, nodeRadius, levelHeight, hSpacing);
+        // 1) Layout
+        var positions = LayoutTree(tree.Root, width, height, nodeRadius, levelHeight, nodeWidthPerLeaf);
 
         // 2) Draw edges
         using var edgePaint = new SKPaint
         {
             Color = EdgeColor,
             Style = SKPaintStyle.Stroke,
-            StrokeWidth = 2f,
+            StrokeWidth = 8f,
             IsAntialias = true
         };
         DrawEdges(canvas, tree.Root, positions, edgePaint);
@@ -78,7 +80,7 @@ public static class TreeRenderer
 
         using var subTextPaint = new SKPaint
         {
-            Color = SKColor.Parse("#b0b0b1"), // slightly darker than #e9e9ea
+            Color = SKColor.Parse("#b0b0b1"),
             IsAntialias = true,
             TextSize = 13f,
             TextAlign = SKTextAlign.Center
@@ -92,16 +94,16 @@ public static class TreeRenderer
 
             DrawShape(canvas, node.Shape, pos, nodeRadius, fillPaint, strokePaint);
 
-            // center label vertically using font metrics
-            var fm = textPaint.FontMetrics;
-            var textY = pos.Y - (fm.Ascent + fm.Descent) / 2f;
-            canvas.DrawText(node.Label, pos.X, textY, textPaint);
+            // draw main label
+            DrawTextWithBackground(canvas, node.Label, pos, textPaint);
+
+            // draw sublabel
             if (!string.IsNullOrEmpty(node.SubLabel))
             {
                 var fm2 = subTextPaint.FontMetrics;
-                // place a bit below the main text
-                var subY = textY + (fm2.Descent - fm2.Ascent) + 2f;
-                canvas.DrawText(node.SubLabel, pos.X, subY, subTextPaint);
+                var offsetY = (fm2.Descent - fm2.Ascent) + 4f;
+                var subPos = new SKPoint(pos.X, pos.Y + offsetY);
+                DrawTextWithBackground(canvas, node.SubLabel, subPos, subTextPaint);
             }
         }
 
@@ -109,6 +111,25 @@ public static class TreeRenderer
         using var data = img.Encode(SKEncodedImageFormat.Png, 100);
         using var fs = File.Open(path, FileMode.Create, FileAccess.Write);
         data.SaveTo(fs);
+    }
+
+    // --- Text with background ---
+    private static void DrawTextWithBackground(SKCanvas canvas, string text, SKPoint center, SKPaint paint)
+    {
+        float textWidth = paint.MeasureText(text);
+        var fm = paint.FontMetrics;
+        float textHeight = fm.Descent - fm.Ascent;
+
+        var rect = SKRect.Create(
+            center.X - textWidth / 2f - LabelPadding,
+            center.Y + fm.Ascent + 6,
+            textWidth + LabelPadding * 2f,
+            textHeight + LabelPadding * 2f
+        );
+
+        using var bgPaint = new SKPaint { Color = LabelBackground, Style = SKPaintStyle.Fill, IsAntialias = true };
+        canvas.DrawRoundRect(rect, 4f, 4f, bgPaint);
+        canvas.DrawText(text, center.X, center.Y - (fm.Ascent + fm.Descent) / 2f, paint);
     }
 
     // --- Internal: palette mapping ---
@@ -134,7 +155,7 @@ public static class TreeRenderer
 
             case NodeShape.Rectangle:
                 {
-                    var w = r * 2.2f; // slightly wider than tall for labels
+                    var w = r * 2.2f;
                     var h = r * 1.6f;
                     var rect = SKRect.Create(center.X - w / 2f, center.Y - h / 2f, w, h);
                     var rr = MathF.Min(r * 0.4f, 10f);
@@ -181,18 +202,15 @@ public static class TreeRenderer
         }
     }
 
-    // --- Internal: layout (simple tidy-ish layout) ---
-    private static Dictionary<TreeNode, SKPoint> LayoutTree(TreeNode root, int width, int height, float r, float levelHeight, float hSpacing)
+    // --- Internal: layout ---
+    private static Dictionary<TreeNode, SKPoint> LayoutTree(TreeNode root, int width, int height, float r, float levelHeight, float nodeWidthPerLeaf)
     {
-        // First pass: compute subtree leaf counts
         var leafCounts = new Dictionary<TreeNode, int>();
         ComputeLeafCounts(root, leafCounts);
 
-        // Horizontal unit per leaf (fit tree to width with margins)
         var totalLeaves = leafCounts[root];
         var margin = MathF.Max(24f, r * 2f);
-        var usableWidth = MathF.Max(10f, width - 2 * margin);
-        var unit = usableWidth / totalLeaves;
+        var unit = nodeWidthPerLeaf;
 
         var positions = new Dictionary<TreeNode, SKPoint>();
         float nextLeafCenter = margin + unit / 2f;
@@ -211,24 +229,43 @@ public static class TreeRenderer
 
             foreach (var c in n.Children) PlaceNode(c, depth + 1);
 
-            // center parent above its children span
             var first = positions[n.Children[0]];
             var last = positions[n.Children[^1]];
             var parentX = (first.X + last.X) / 2f;
             var parentY = margin + depth * levelHeight + r;
             positions[n] = new SKPoint(parentX, parentY);
         }
-
-        static int ComputeLeafCounts(TreeNode n, Dictionary<TreeNode, int> map)
-        {
-            if (n.Children.Count == 0) { map[n] = 1; return 1; }
-            int s = 0;
-            foreach (var c in n.Children) s += ComputeLeafCounts(c, map);
-            map[n] = s;
-            return s;
-        }
     }
 
+    private static int ComputeLeafCounts(TreeNode n, Dictionary<TreeNode, int> map)
+    {
+        if (n.Children.Count == 0) { map[n] = 1; return 1; }
+        int s = 0;
+        foreach (var c in n.Children) s += ComputeLeafCounts(c, map);
+        map[n] = s;
+        return s;
+    }
+
+    // --- Auto-sizing wrapper ---
+    public static void RenderAuto(Tree tree, string path, float nodeRadius = 100f, float levelHeight = 300f, float nodeWidthPerLeaf = 350f, float margin = 40f)
+    {
+        var leafCounts = new Dictionary<TreeNode, int>();
+        int leaves = ComputeLeafCounts(tree.Root, leafCounts);
+        int depth = ComputeDepth(tree.Root);
+
+        int width = (int)((leaves + 1) * nodeWidthPerLeaf + margin * 2);
+        int height = (int)((depth + 1) * levelHeight + margin * 2);
+
+        Render(tree, width, height, path, nodeRadius, levelHeight, nodeWidthPerLeaf);
+    }
+
+    private static int ComputeDepth(TreeNode node)
+    {
+        if (node.Children.Count == 0) return 1;
+        return 1 + node.Children.Max(ComputeDepth);
+    }
+
+    // --- Dependency tree adapters ---
     public static TreeNode FromDependancyNode(DepTreeNode node)
     {
         var outNode = new TreeNode(
@@ -254,9 +291,7 @@ public static class TreeRenderer
         return new Tree(root);
     }
 
-    // --- Tiny example (optional) ---
-    // Call this from your code to test:
-    // TreeRenderer.Render(TreeRenderer.MakeSample(), 800, 600, "tree.png");
+    // --- Example ---
     public static Tree MakeSample()
     {
         var root = new TreeNode("root", "Root", NodeShape.Hexagon, NodePalette.Blue);

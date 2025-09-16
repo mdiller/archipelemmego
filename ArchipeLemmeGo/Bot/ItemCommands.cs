@@ -92,7 +92,7 @@ namespace ArchipeLemmeGo.Bot
                 {
                     await client.Say($"!hint {item}");
 
-                    await Task.Delay(1000);
+                    await Task.Delay(2000); // lets wait a full 2 seconds for hints to come in for this
 
                     hints = (await client.GetHints())
                         .Where(h => h.ItemId == itemId)
