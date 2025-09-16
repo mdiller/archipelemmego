@@ -209,7 +209,7 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                 },
                 Location = new ArchLocation
                 {
-                    LocationId = hint.ItemId,
+                    LocationId = hint.LocationId,
                     Slot = hint.FindingPlayer,
                     RoomInfo = roomInfo
                 },
