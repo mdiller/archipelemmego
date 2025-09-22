@@ -207,7 +207,8 @@ namespace ArchipeLemmeGo.Bot
 
             var hintInfos = archCtx.RoomInfo.RequestedHints
                 .Where(h => h.RequesterSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
-                .OrderBy(h => h.ItemId)
+                .OrderBy(h => h.Priority)
+                .Reverse()
                 .ToList();
 
             var result = announceText + "\n\n__Now Waiting For:__";
