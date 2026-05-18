@@ -1,1 +1,4 @@
 resources/
+_temp/
+.claude/
+
