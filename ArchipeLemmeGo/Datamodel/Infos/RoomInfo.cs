@@ -63,6 +63,11 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public List<DependancyLink> Dependancies { get; set; } = new List<DependancyLink>();
 
         /// <summary>
+        /// Maps extra Discord user IDs to the slot ID they can act as
+        /// </summary>
+        public Dictionary<ulong, int> CoPlayers { get; set; } = new Dictionary<ulong, int>();
+
+        /// <summary>
         /// Gets the name of a location
         /// </summary>
         public string? GetName(ArchItem item)

@@ -74,6 +74,9 @@ namespace ArchipeLemmeGo.Archipelago
             var authorId = userId;
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
 
+            if (slotInfo == null && roomInfo.CoPlayers.TryGetValue(authorId, out var coSlotId))
+                slotInfo = roomInfo.GetSlotInfo(coSlotId);
+
             if (slotInfo == null && requireRegistered)
             {
                 throw new UserError($"You have to register as a player in this room with `/register`.");
@@ -113,6 +116,9 @@ namespace ArchipeLemmeGo.Archipelago
             var roomInfo = LoadRoomInfo(roomUri);
             var authorId = ctx.User.Id;
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
+
+            if (slotInfo == null && roomInfo.CoPlayers.TryGetValue(authorId, out var coSlotId))
+                slotInfo = roomInfo.GetSlotInfo(coSlotId);
 
             if (slotInfo == null && requireRegistered)
             {
