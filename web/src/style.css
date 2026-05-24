@@ -279,3 +279,10 @@ html, body, #app {
   flex-direction: column;
   text-align: center;
 }
+
+.row-icon {
+  font-size: 0.95rem;
+  margin-right: 0.35rem;
+  opacity: 0.8;
+  vertical-align: middle;
+}

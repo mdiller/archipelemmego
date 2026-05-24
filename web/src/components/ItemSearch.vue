@@ -56,7 +56,12 @@
         stripedRows
         :rowHover="true"
       >
-        <Column field="name" :header="searchType === 'items' ? 'Item' : 'Location'" />
+        <Column field="name" :header="searchType === 'items' ? 'Item' : 'Location'">
+          <template #body="{ data }">
+            <i :class="['mdi', 'mdi-' + (data.iconName || 'help-circle-outline')]" class="row-icon" />
+            {{ data.name }}
+          </template>
+        </Column>
         <Column field="slotName" header="Player" style="width: 9rem;" />
         <Column field="game" header="Game" />
         <Column v-if="searchType === 'items'" field="itemId" header="ID" style="width: 8rem; font-family: monospace; font-size: 0.75rem;" />

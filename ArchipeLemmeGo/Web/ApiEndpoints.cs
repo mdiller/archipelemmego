@@ -1,5 +1,6 @@
 using ArchipeLemmeGo.Datamodel;
 using ArchipeLemmeGo.Datamodel.Infos;
+using ArchipeLemmeGo.IconMatching;
 
 namespace ArchipeLemmeGo.Web
 {
@@ -90,7 +91,7 @@ namespace ArchipeLemmeGo.Web
             });
         }
 
-        private static IResult GetWaiting(string channelId, int? slot = null)
+        private static IResult GetWaiting(string channelId, IconAssignmentService icons, int? slot = null)
         {
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
@@ -99,25 +100,32 @@ namespace ArchipeLemmeGo.Web
                 .Where(h => !h.IsFound)
                 .Where(h => slot == null || h.RequesterSlot == slot)
                 .OrderByDescending(h => h.Priority)
-                .Select(h => new
+                .Select(h =>
                 {
-                    itemId = h.ItemId,
-                    itemName = h.Item.Name,
-                    requesterSlot = h.RequesterSlot,
-                    requesterName = room.GetSlotInfo(h.RequesterSlot)?.Name ?? "Unknown",
-                    finderSlot = h.FinderSlot,
-                    finderName = room.GetSlotInfo(h.FinderSlot)?.Name ?? "Unknown",
-                    locationId = h.LocationId,
-                    locationName = h.Location.Name,
-                    priority = h.Priority,
-                    count = h.Count,
-                    information = h.Information ?? ""
+                    var itemGame = room.GetSlotInfo(h.Item.Slot)?.Game ?? "";
+                    var locGame = room.GetSlotInfo(h.Location.Slot)?.Game ?? "";
+                    return new
+                    {
+                        itemId = h.ItemId,
+                        itemName = h.Item.Name,
+                        itemIcon = icons.GetIcon(itemGame, h.Item.Name, isLocation: false),
+                        requesterSlot = h.RequesterSlot,
+                        requesterName = room.GetSlotInfo(h.RequesterSlot)?.Name ?? "Unknown",
+                        finderSlot = h.FinderSlot,
+                        finderName = room.GetSlotInfo(h.FinderSlot)?.Name ?? "Unknown",
+                        locationId = h.LocationId,
+                        locationName = h.Location.Name,
+                        locationIcon = icons.GetIcon(locGame, h.Location.Name, isLocation: true),
+                        priority = h.Priority,
+                        count = h.Count,
+                        information = h.Information ?? ""
+                    };
                 });
 
             return Results.Ok(hints);
         }
 
-        private static IResult GetTodo(string channelId, int? slot = null)
+        private static IResult GetTodo(string channelId, IconAssignmentService icons, int? slot = null)
         {
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
@@ -126,24 +134,31 @@ namespace ArchipeLemmeGo.Web
                 .Where(h => !h.IsFound)
                 .Where(h => slot == null || h.FinderSlot == slot)
                 .OrderByDescending(h => h.Priority)
-                .Select(h => new
+                .Select(h =>
                 {
-                    locationId = h.LocationId,
-                    locationName = h.Location.Name,
-                    finderSlot = h.FinderSlot,
-                    finderName = room.GetSlotInfo(h.FinderSlot)?.Name ?? "Unknown",
-                    itemId = h.ItemId,
-                    itemName = h.Item.Name,
-                    requesterSlot = h.RequesterSlot,
-                    requesterName = room.GetSlotInfo(h.RequesterSlot)?.Name ?? "Unknown",
-                    priority = h.Priority,
-                    information = h.Information ?? ""
+                    var itemGame = room.GetSlotInfo(h.Item.Slot)?.Game ?? "";
+                    var locGame = room.GetSlotInfo(h.Location.Slot)?.Game ?? "";
+                    return new
+                    {
+                        locationId = h.LocationId,
+                        locationName = h.Location.Name,
+                        locationIcon = icons.GetIcon(locGame, h.Location.Name, isLocation: true),
+                        finderSlot = h.FinderSlot,
+                        finderName = room.GetSlotInfo(h.FinderSlot)?.Name ?? "Unknown",
+                        itemId = h.ItemId,
+                        itemName = h.Item.Name,
+                        itemIcon = icons.GetIcon(itemGame, h.Item.Name, isLocation: false),
+                        requesterSlot = h.RequesterSlot,
+                        requesterName = room.GetSlotInfo(h.RequesterSlot)?.Name ?? "Unknown",
+                        priority = h.Priority,
+                        information = h.Information ?? ""
+                    };
                 });
 
             return Results.Ok(hints);
         }
 
-        private static IResult GetDeps(string channelId)
+        private static IResult GetDeps(string channelId, IconAssignmentService icons)
         {
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
@@ -155,27 +170,35 @@ namespace ArchipeLemmeGo.Web
             {
                 var locKey = $"loc-{dep.Dependant.Slot}-{dep.Dependant.LocationId}";
                 if (!nodeSet.ContainsKey(locKey))
+                {
+                    var locGame = room.GetSlotInfo(dep.Dependant.Slot)?.Game ?? "";
                     nodeSet[locKey] = new
                     {
                         id = locKey,
                         type = "location",
                         name = dep.Dependant.Name,
+                        iconName = icons.GetIcon(locGame, dep.Dependant.Name, isLocation: true),
                         slot = dep.Dependant.Slot,
                         slotName = room.GetSlotInfo(dep.Dependant.Slot)?.Name ?? $"Slot #{dep.Dependant.Slot}"
                     };
+                }
 
                 foreach (var prereq in dep.Prerequisites)
                 {
                     var itemKey = $"item-{prereq.Slot}-{prereq.ItemId}";
                     if (!nodeSet.ContainsKey(itemKey))
+                    {
+                        var itemGame = room.GetSlotInfo(prereq.Slot)?.Game ?? "";
                         nodeSet[itemKey] = new
                         {
                             id = itemKey,
                             type = "item",
                             name = prereq.Name,
+                            iconName = icons.GetIcon(itemGame, prereq.Name, isLocation: false),
                             slot = prereq.Slot,
                             slotName = room.GetSlotInfo(prereq.Slot)?.Name ?? $"Slot #{prereq.Slot}"
                         };
+                    }
 
                     edges.Add(new { source = itemKey, target = locKey });
                 }
@@ -184,7 +207,7 @@ namespace ArchipeLemmeGo.Web
             return Results.Ok(new { nodes = nodeSet.Values, edges });
         }
 
-        private static IResult GetItems(string channelId, int? slot = null, string? q = null)
+        private static IResult GetItems(string channelId, IconAssignmentService icons, int? slot = null, string? q = null)
         {
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
@@ -198,6 +221,7 @@ namespace ArchipeLemmeGo.Web
                 .SelectMany(s => s.ItemLookup.Select(kvp => new
                 {
                     name = kvp.Key,
+                    iconName = icons.GetIcon(s.Game, kvp.Key, isLocation: false),
                     itemId = kvp.Value,
                     slotId = s.SlotId,
                     slotName = s.Name,
@@ -210,7 +234,7 @@ namespace ArchipeLemmeGo.Web
             return Results.Ok(items.Take(150));
         }
 
-        private static IResult GetLocations(string channelId, int? slot = null, string? q = null)
+        private static IResult GetLocations(string channelId, IconAssignmentService icons, int? slot = null, string? q = null)
         {
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
@@ -224,6 +248,7 @@ namespace ArchipeLemmeGo.Web
                 .SelectMany(s => s.LocationLookup.Select(kvp => new
                 {
                     name = kvp.Key,
+                    iconName = icons.GetIcon(s.Game, kvp.Key, isLocation: true),
                     locationId = kvp.Value,
                     slotId = s.SlotId,
                     slotName = s.Name,

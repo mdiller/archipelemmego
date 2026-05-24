@@ -63,6 +63,7 @@ const edges = ref([])
 const NODE_W = 180
 const LINE_H = 15
 const NODE_PAD_V = 10
+const ICON_H = 22
 const WRAP_CHARS = 22
 const MAX_LINES = 3
 
@@ -91,7 +92,7 @@ function wrapText(text) {
 }
 
 function calcNodeH(lines) {
-  return Math.max(44, (lines.length + 1) * LINE_H + NODE_PAD_V * 2)
+  return Math.max(64, ICON_H + NODE_PAD_V + (lines.length + 1) * LINE_H + NODE_PAD_V)
 }
 
 function rectBoundary(cx, cy, hw, hh, angle) {
@@ -212,16 +213,34 @@ function renderGraph() {
 
   nodeEl.each(function(d) {
     const sel = d3.select(this)
-    const totalTextH = (d.lines.length + 1) * LINE_H
-    const startY = -totalTextH / 2 + LINE_H * 0.85
+    const iconName = d.iconName || 'help-circle-outline'
+    const color = d.type === 'item' ? '#93c5fd' : '#c4b5fd'
 
+    // Icon via foreignObject so MDI CSS classes apply
+    sel.append('foreignObject')
+      .attr('x', -9)
+      .attr('y', -d.h / 2 + 3)
+      .attr('width', 18)
+      .attr('height', 18)
+      .append('xhtml:body')
+      .style('margin', '0').style('padding', '0').style('background', 'transparent')
+      .append('xhtml:i')
+      .attr('class', `mdi mdi-${iconName}`)
+      .style('font-size', '13px')
+      .style('color', color)
+      .style('display', 'block')
+      .style('text-align', 'center')
+      .style('line-height', '18px')
+
+    // Name lines — shifted down to sit below the icon
+    const startY = -d.h / 2 + ICON_H + NODE_PAD_V + LINE_H * 0.85
     d.lines.forEach((line, i) => {
       sel.append('text')
         .attr('x', 0).attr('y', startY + i * LINE_H)
         .attr('text-anchor', 'middle')
         .attr('font-size', '11px')
         .attr('font-weight', '600')
-        .attr('fill', d.type === 'item' ? '#93c5fd' : '#c4b5fd')
+        .attr('fill', color)
         .attr('font-family', "'Segoe UI', system-ui, sans-serif")
         .text(line)
     })

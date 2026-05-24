@@ -35,8 +35,18 @@
           </template>
         </Column>
         <Column v-if="!slot" field="requesterName" header="Player" style="width: 8rem;" />
-        <Column field="itemName" header="Item" />
-        <Column field="locationName" header="Location" />
+        <Column field="itemName" header="Item">
+          <template #body="{ data }">
+            <i :class="['mdi', 'mdi-' + (data.itemIcon || 'help-circle-outline')]" class="row-icon" />
+            {{ data.itemName }}
+          </template>
+        </Column>
+        <Column field="locationName" header="Location">
+          <template #body="{ data }">
+            <i :class="['mdi', 'mdi-' + (data.locationIcon || 'help-circle-outline')]" class="row-icon" />
+            {{ data.locationName }}
+          </template>
+        </Column>
         <Column field="finderName" header="Finder" style="width: 8rem;" />
         <Column header="Notes">
           <template #body="{ data }">

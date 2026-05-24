@@ -35,8 +35,18 @@
           </template>
         </Column>
         <Column v-if="!slot" field="finderName" header="In World" style="width: 8rem;" />
-        <Column field="locationName" header="Location to Check" />
-        <Column field="itemName" header="Item" />
+        <Column field="locationName" header="Location to Check">
+          <template #body="{ data }">
+            <i :class="['mdi', 'mdi-' + (data.locationIcon || 'help-circle-outline')]" class="row-icon" />
+            {{ data.locationName }}
+          </template>
+        </Column>
+        <Column field="itemName" header="Item">
+          <template #body="{ data }">
+            <i :class="['mdi', 'mdi-' + (data.itemIcon || 'help-circle-outline')]" class="row-icon" />
+            {{ data.itemName }}
+          </template>
+        </Column>
         <Column field="requesterName" header="For" style="width: 8rem;" />
         <Column header="Notes">
           <template #body="{ data }">

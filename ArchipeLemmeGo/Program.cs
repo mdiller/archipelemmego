@@ -1,4 +1,5 @@
 using ArchipeLemmeGo.Bot;
+using ArchipeLemmeGo.IconMatching;
 using ArchipeLemmeGo.Web;
 using System.Threading.RateLimiting;
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5512");
 
 builder.Services.AddHostedService<BotService>();
+builder.Services.AddSingleton<IconAssignmentService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -37,6 +39,8 @@ app.Use(async (context, next) =>
 
 app.UseStaticFiles();
 app.UseRateLimiter();
+
+app.Services.GetRequiredService<IconAssignmentService>().WarmUp();
 
 ApiEndpoints.Map(app);
 
