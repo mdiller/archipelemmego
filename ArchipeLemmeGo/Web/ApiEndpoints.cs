@@ -299,7 +299,17 @@ namespace ArchipeLemmeGo.Web
                 ready = true,
                 query = matchName,
                 iconCount = matcher.IconCount,
-                topMatches = matches.Select(m => new { m.IconName, score = m.Similarity })
+                topMatches = matches.Select(m =>
+                {
+                    var texts = matcher.GetIconTexts(m.IconName);
+                    return new
+                    {
+                        m.IconName,
+                        score = m.Similarity,
+                        fullText = texts?.fullText,
+                        nameText = texts?.nameText
+                    };
+                })
             });
         }
 

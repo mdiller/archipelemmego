@@ -20,24 +20,38 @@ public sealed class MdiIconMatcherOptions
 public sealed partial class MdiIconMatcher : IDisposable
 {
     // Bump this to force a full cache rebuild on next startup.
-    public const int IconsVersion = 3;
+    public const int IconsVersion = 4;
 
     private const string DefaultMetadataUrl =
         "https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/meta.json";
 
     private readonly LocalEmbedder _embedder;
     private readonly string[] _iconNames;
+    private readonly string[] _iconSearchTexts;
     private readonly float[][] _iconEmbeddings;
+    private readonly float[][] _iconNameEmbeddings;
+    private readonly Dictionary<string, int> _iconIndex;
     private readonly object _queryLock = new();
 
     private static readonly SemaphoreSlim _globalInitSem = new(1, 1);
     private static MdiIconMatcher? _singleton;
 
-    private MdiIconMatcher(LocalEmbedder embedder, string[] names, float[][] embeddings)
+    private MdiIconMatcher(LocalEmbedder embedder, string[] names, string[] searchTexts, float[][] embeddings, float[][] nameEmbeddings)
     {
         _embedder = embedder;
         _iconNames = names;
+        _iconSearchTexts = searchTexts;
         _iconEmbeddings = embeddings;
+        _iconNameEmbeddings = nameEmbeddings;
+        _iconIndex = new Dictionary<string, int>(names.Length);
+        for (int i = 0; i < names.Length; i++)
+            _iconIndex[names[i]] = i;
+    }
+
+    public (string fullText, string nameText)? GetIconTexts(string iconName)
+    {
+        if (!_iconIndex.TryGetValue(iconName, out var idx)) return null;
+        return (_iconSearchTexts[idx], BuildNameText(iconName));
     }
 
     public static async Task<MdiIconMatcher> CreateAsync(
@@ -71,11 +85,11 @@ public sealed partial class MdiIconMatcher : IDisposable
 
         if (options.CacheDirectory != null && !options.ForceRefresh)
         {
-            var (names, embeddings) = TryLoadCache(options.CacheDirectory, urlHash);
-            if (names != null && embeddings != null)
+            var (names, searchTexts, embeddings, nameEmbeddings) = TryLoadCache(options.CacheDirectory, urlHash);
+            if (names != null && searchTexts != null && embeddings != null && nameEmbeddings != null)
             {
                 options.Progress?.Invoke($"Loaded {names.Length} icon embeddings from cache.");
-                return new MdiIconMatcher(new LocalEmbedder(), names, embeddings);
+                return new MdiIconMatcher(new LocalEmbedder(), names, searchTexts, embeddings, nameEmbeddings);
             }
             options.Progress?.Invoke("Cache miss or version mismatch — rebuilding from scratch.");
         }
@@ -86,13 +100,17 @@ public sealed partial class MdiIconMatcher : IDisposable
 
         var embedder = new LocalEmbedder();
         var resultNames = new string[icons.Count];
+        var resultSearchTexts = new string[icons.Count];
         var resultEmbeddings = new float[icons.Count][];
+        var resultNameEmbeddings = new float[icons.Count][];
 
         for (int i = 0; i < icons.Count; i++)
         {
-            var emb = embedder.Embed(BuildSearchText(icons[i]));
+            var searchText = BuildSearchText(icons[i]);
             resultNames[i] = icons[i].Name;
-            resultEmbeddings[i] = Normalize(emb.Values.ToArray());
+            resultSearchTexts[i] = searchText;
+            resultEmbeddings[i] = Normalize(embedder.Embed(searchText).Values.ToArray());
+            resultNameEmbeddings[i] = Normalize(embedder.Embed(BuildNameText(icons[i].Name)).Values.ToArray());
 
             if (i > 0 && i % 1000 == 0)
                 options.Progress?.Invoke($"  {i}/{icons.Count} embeddings computed...");
@@ -103,11 +121,11 @@ public sealed partial class MdiIconMatcher : IDisposable
         if (options.CacheDirectory != null)
         {
             options.Progress?.Invoke("Saving cache to disk...");
-            SaveCache(options.CacheDirectory, urlHash, resultNames, resultEmbeddings);
+            SaveCache(options.CacheDirectory, urlHash, resultNames, resultSearchTexts, resultEmbeddings, resultNameEmbeddings);
             options.Progress?.Invoke("Cache saved.");
         }
 
-        return new MdiIconMatcher(embedder, resultNames, resultEmbeddings);
+        return new MdiIconMatcher(embedder, resultNames, resultSearchTexts, resultEmbeddings, resultNameEmbeddings);
     }
 
     public IReadOnlyList<IconMatch> FindMatches(string query, int topN = 5)
@@ -121,11 +139,15 @@ public sealed partial class MdiIconMatcher : IDisposable
         var scored = new (float score, int idx)[_iconNames.Length];
         for (int i = 0; i < _iconEmbeddings.Length; i++)
         {
-            float dot = 0f;
+            float fullDot = 0f, nameDot = 0f;
             var emb = _iconEmbeddings[i];
+            var nameEmb = _iconNameEmbeddings[i];
             for (int j = 0; j < queryValues.Length; j++)
-                dot += queryValues[j] * emb[j];
-            scored[i] = (dot, i);
+            {
+                fullDot += queryValues[j] * emb[j];
+                nameDot += queryValues[j] * nameEmb[j];
+            }
+            scored[i] = ((fullDot + nameDot * 2f) / 3f, i);
         }
 
         Array.Sort(scored, (a, b) => b.score.CompareTo(a.score));
@@ -153,6 +175,8 @@ public sealed partial class MdiIconMatcher : IDisposable
 
     public void Dispose() => _embedder.Dispose();
 
+    private static string BuildNameText(string iconName) => iconName.Replace('-', ' ');
+
     private static string BuildSearchText(MdiIconEntry icon)
     {
         var sb = new StringBuilder(icon.Name);
@@ -176,45 +200,55 @@ public sealed partial class MdiIconMatcher : IDisposable
     }
 
     // Binary cache format:
-    //   [uint32 magic=0x4D444943] [byte formatVersion=1] [int32 iconsVersion] [int32 count]
-    //   per icon: [string name (BinaryWriter length-prefixed)] [int32 floatCount] [float32 * floatCount]
-    private static (string[]? names, float[][]? embeddings) TryLoadCache(
+    //   [uint32 magic=0x4D444943] [byte formatVersion=3] [int32 iconsVersion] [int32 count]
+    //   per icon: [string name (BinaryWriter length-prefixed)]
+    //             [string searchText]                          <- full (name+tags+aliases) text
+    //             [int32 floatCount] [float32 * floatCount]   <- full embedding
+    //             [int32 floatCount] [float32 * floatCount]   <- name-only embedding
+    private static (string[]? names, string[]? searchTexts, float[][]? embeddings, float[][]? nameEmbeddings) TryLoadCache(
         string cacheDir, string urlHash)
     {
         var path = Path.Combine(cacheDir, $"{urlHash}.bin");
-        if (!File.Exists(path)) return (null, null);
+        if (!File.Exists(path)) return (null, null, null, null);
         try
         {
             using var fs = File.OpenRead(path);
             using var br = new BinaryReader(fs, Encoding.UTF8, leaveOpen: false);
 
-            if (br.ReadUInt32() != 0x4D444943u) return (null, null);
-            if (br.ReadByte() != 1) return (null, null);
-            if (br.ReadInt32() != IconsVersion) return (null, null);
+            if (br.ReadUInt32() != 0x4D444943u) return (null, null, null, null);
+            if (br.ReadByte() != 3) return (null, null, null, null);
+            if (br.ReadInt32() != IconsVersion) return (null, null, null, null);
 
             int count = br.ReadInt32();
             var names = new string[count];
+            var searchTexts = new string[count];
             var embeddings = new float[count][];
+            var nameEmbeddings = new float[count][];
 
             for (int i = 0; i < count; i++)
             {
                 names[i] = br.ReadString();
+                searchTexts[i] = br.ReadString();
                 int floatCount = br.ReadInt32();
                 embeddings[i] = new float[floatCount];
                 for (int j = 0; j < floatCount; j++)
                     embeddings[i][j] = br.ReadSingle();
+                int nameFloatCount = br.ReadInt32();
+                nameEmbeddings[i] = new float[nameFloatCount];
+                for (int j = 0; j < nameFloatCount; j++)
+                    nameEmbeddings[i][j] = br.ReadSingle();
             }
 
-            return (names, embeddings);
+            return (names, searchTexts, embeddings, nameEmbeddings);
         }
         catch
         {
-            return (null, null);
+            return (null, null, null, null);
         }
     }
 
     private static void SaveCache(
-        string cacheDir, string urlHash, string[] names, float[][] embeddings)
+        string cacheDir, string urlHash, string[] names, string[] searchTexts, float[][] embeddings, float[][] nameEmbeddings)
     {
         Directory.CreateDirectory(cacheDir);
         var path = Path.Combine(cacheDir, $"{urlHash}.bin");
@@ -226,14 +260,18 @@ public sealed partial class MdiIconMatcher : IDisposable
             using (var bw = new BinaryWriter(fs, Encoding.UTF8, leaveOpen: false))
             {
                 bw.Write(0x4D444943u);
-                bw.Write((byte)1);
+                bw.Write((byte)3);
                 bw.Write(IconsVersion);
                 bw.Write(names.Length);
                 for (int i = 0; i < names.Length; i++)
                 {
                     bw.Write(names[i]);
+                    bw.Write(searchTexts[i]);
                     bw.Write(embeddings[i].Length);
                     foreach (var f in embeddings[i])
+                        bw.Write(f);
+                    bw.Write(nameEmbeddings[i].Length);
+                    foreach (var f in nameEmbeddings[i])
                         bw.Write(f);
                 }
             }
