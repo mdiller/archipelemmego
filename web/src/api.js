@@ -31,3 +31,7 @@ export function searchItems(channelId, q, slot = null) {
 export function searchLocations(channelId, q, slot = null) {
   return apiFetch(buildUrl(`/api/${channelId}/locations`, { q, slot }))
 }
+
+export function getDeps(channelId) {
+  return apiFetch(`/api/${channelId}/deps`)
+}

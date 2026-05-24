@@ -14,6 +14,7 @@ namespace ArchipeLemmeGo.Web
             api.MapGet("/todo", GetTodo);
             api.MapGet("/items", GetItems);
             api.MapGet("/locations", GetLocations);
+            api.MapGet("/deps", GetDeps);
         }
 
         private static bool TryLoadRoom(string channelId, out RoomInfo? room)
@@ -140,6 +141,47 @@ namespace ArchipeLemmeGo.Web
                 });
 
             return Results.Ok(hints);
+        }
+
+        private static IResult GetDeps(string channelId)
+        {
+            if (!TryLoadRoom(channelId, out var room) || room == null)
+                return Results.NotFound();
+
+            var nodeSet = new Dictionary<string, object>();
+            var edges = new List<object>();
+
+            foreach (var dep in room.Dependancies)
+            {
+                var locKey = $"loc-{dep.Dependant.Slot}-{dep.Dependant.LocationId}";
+                if (!nodeSet.ContainsKey(locKey))
+                    nodeSet[locKey] = new
+                    {
+                        id = locKey,
+                        type = "location",
+                        name = dep.Dependant.Name,
+                        slot = dep.Dependant.Slot,
+                        slotName = room.GetSlotInfo(dep.Dependant.Slot)?.Name ?? $"Slot #{dep.Dependant.Slot}"
+                    };
+
+                foreach (var prereq in dep.Prerequisites)
+                {
+                    var itemKey = $"item-{prereq.Slot}-{prereq.ItemId}";
+                    if (!nodeSet.ContainsKey(itemKey))
+                        nodeSet[itemKey] = new
+                        {
+                            id = itemKey,
+                            type = "item",
+                            name = prereq.Name,
+                            slot = prereq.Slot,
+                            slotName = room.GetSlotInfo(prereq.Slot)?.Name ?? $"Slot #{prereq.Slot}"
+                        };
+
+                    edges.Add(new { source = itemKey, target = locKey });
+                }
+            }
+
+            return Results.Ok(new { nodes = nodeSet.Values, edges });
         }
 
         private static IResult GetItems(string channelId, int? slot = null, string? q = null)

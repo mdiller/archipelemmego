@@ -65,6 +65,7 @@
         <WaitingList v-if="mode === 'waiting'" :channelId="channelId" :slot="selectedSlot" :room="room" />
         <TodoList v-if="mode === 'todo'" :channelId="channelId" :slot="selectedSlot" :room="room" />
         <ItemSearch v-if="mode === 'search'" :channelId="channelId" :slot="selectedSlot" />
+        <DepGraph v-if="mode === 'deps'" :channelId="channelId" />
       </template>
     </div>
   </div>
@@ -76,6 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import WaitingList from '../components/WaitingList.vue'
 import TodoList from '../components/TodoList.vue'
 import ItemSearch from '../components/ItemSearch.vue'
+import DepGraph from '../components/DepGraph.vue'
 import { getRoom } from '../api.js'
 
 const route = useRoute()
@@ -91,7 +93,8 @@ const selectedSlot = ref(null)
 const modeOptions = [
   { label: 'Waiting', value: 'waiting', icon: 'mdi-clock-outline' },
   { label: 'Todo', value: 'todo', icon: 'mdi-checkbox-marked-outline' },
-  { label: 'Search', value: 'search', icon: 'mdi-magnify' }
+  { label: 'Search', value: 'search', icon: 'mdi-magnify' },
+  { label: 'Dep Tree', value: 'deps', icon: 'mdi-graph-outline' }
 ]
 
 const currentMode = computed(() => modeOptions.find(m => m.value === mode.value))
