@@ -334,10 +334,13 @@ namespace ArchipeLemmeGo.Web
             var ownerSlot = room.SlotInfos.FirstOrDefault(s => s.SlotId == requesterSlot);
             var isOwner = ownerSlot?.DiscordId == discordId;
             var isCoplayer = room.CoPlayers.TryGetValue(discordId, out var coSlot) && coSlot == requesterSlot;
-            var isAdmin = room.AdminId == discordId;
+            var isAdmin = room.AdminId != 0 && room.AdminId == discordId;
 
             if (!isOwner && !isCoplayer && !isAdmin)
                 return Results.Forbid();
+
+            if (body.Information?.Length > 2000)
+                return Results.BadRequest("Note exceeds maximum length of 2000 characters");
 
             var hint = room.RequestedHints.FirstOrDefault(h =>
                 h.RequesterSlot == requesterSlot && h.ItemId == itemId && h.LocationId == locationId);
@@ -345,7 +348,7 @@ namespace ArchipeLemmeGo.Web
             if (hint == null)
                 return Results.NotFound();
 
-            hint.Information = body.Information;
+            hint.Information = body.Information ?? "";
             room.Save();
 
             return Results.Ok();

@@ -46,9 +46,10 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+// Forward X-Forwarded-For so the rate limiter sees the real client IP behind a proxy
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
 });
 
 app.Use(async (context, next) =>
@@ -56,7 +57,8 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    if (context.Request.IsHttps)
+        context.Response.Headers.Append("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
     await next();
 });
 

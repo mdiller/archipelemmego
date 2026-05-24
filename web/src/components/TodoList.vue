@@ -57,7 +57,7 @@
               class="info-input"
               placeholder="Add a note..."
               @blur="saveInfo(data)"
-              @keyup.enter="($event.target as HTMLElement).blur()"
+              @keyup.enter="$event.target.blur()"
             />
             <span v-else class="info-text">{{ data.information }}</span>
           </template>

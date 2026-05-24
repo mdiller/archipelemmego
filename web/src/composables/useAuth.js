@@ -23,7 +23,7 @@ export function useAuth() {
     fetchMe()
   }
 
-  function login(returnUrl = location.pathname + location.search) {
+  function login(returnUrl = location.href) {
     window.location.href = `/auth/login?returnUrl=${encodeURIComponent(returnUrl)}`
   }
 

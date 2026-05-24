@@ -21,12 +21,21 @@ namespace ArchipeLemmeGo.Web
             app.MapPost("/auth/logout", (Delegate)Logout);
         }
 
-        private static IResult Login(HttpContext ctx, string? returnUrl = null)
+        private static IResult Login(HttpContext ctx, IWebHostEnvironment env, string? returnUrl = null)
         {
             var state = Guid.NewGuid().ToString("N");
-            var cookieOpts = new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromMinutes(10) };
+            var cookieOpts = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                MaxAge = TimeSpan.FromMinutes(10),
+                Secure = !env.IsDevelopment()
+            };
             ctx.Response.Cookies.Append("auth_state", state, cookieOpts);
-            if (returnUrl != null)
+
+            // Only store returnUrl if it's a safe destination — prevents open redirect.
+            // Allows relative paths, localhost (dev), and the configured BaseUrl host (prod).
+            if (returnUrl != null && IsSafeReturnUrl(returnUrl))
                 ctx.Response.Cookies.Append("auth_return", returnUrl, cookieOpts);
 
             var callbackUri = Uri.EscapeDataString(GetCallbackUri(ctx));
@@ -44,7 +53,10 @@ namespace ArchipeLemmeGo.Web
             ctx.Response.Cookies.Delete("auth_state");
             ctx.Response.Cookies.Delete("auth_return");
 
-            if (string.IsNullOrEmpty(code) || state != savedState)
+            if (string.IsNullOrEmpty(code)
+                || string.IsNullOrEmpty(state)
+                || string.IsNullOrEmpty(savedState)
+                || state != savedState)
                 return Results.Redirect("/?auth_error=invalid_state");
 
             var client = httpClientFactory.CreateClient();
@@ -112,7 +124,36 @@ namespace ArchipeLemmeGo.Web
             return Results.Ok();
         }
 
+        // Prefers the hardcoded BaseUrl from config to avoid Host-header injection.
+        // Falls back to the request host (fine for local dev where BaseUrl is unset).
         private static string GetCallbackUri(HttpContext ctx)
-            => $"{ctx.Request.Scheme}://{ctx.Request.Host}/auth/callback";
+        {
+            var baseUrl = BotInfo.BaseUrl;
+            return string.IsNullOrEmpty(baseUrl)
+                ? $"{ctx.Request.Scheme}://{ctx.Request.Host}/auth/callback"
+                : $"{baseUrl}/auth/callback";
+        }
+
+        private static bool IsSafeReturnUrl(string returnUrl)
+        {
+            if (Uri.TryCreate(returnUrl, UriKind.Relative, out _))
+                return true;
+
+            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var uri))
+                return false;
+
+            // Allow localhost on any port (dev)
+            if (uri.Host is "localhost" or "127.0.0.1")
+                return true;
+
+            // Allow the configured production origin
+            var baseUrl = BotInfo.BaseUrl;
+            if (!string.IsNullOrEmpty(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri)
+                && uri.Host.Equals(baseUri.Host, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
     }
 }
