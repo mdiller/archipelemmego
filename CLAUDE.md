@@ -62,6 +62,10 @@ All state is stored as JSON under `resources/info/`. The `ChannelLinker` maps Di
 
 `Bot/BotInfo.cs` contains the bot token, owner ID, and test guild ID. These are currently hardcoded — do not commit changes that expose or rotate the token publicly.
 
+### Icon Assignment
+
+`IconMatching/IconAssignmentService.cs` assigns MDI icons to items/locations using embedding-based matching (`MdiIconMatcher`). Results are cached per game in `resources/info/IconCache/`. When making any change to how icon matching or cache keying works, bump `MdiIconMatcher.IconsVersion` in `IconMatching/MdiIconMatcher.cs` — this triggers a cache wipe on next startup so stale entries don't persist.
+
 ### Error Handling Pattern
 
 Throw `UserError` (with a message string) anywhere in the command pipeline to surface a clean error to the Discord user. All other exceptions are caught by `InteractionHandler` and logged.

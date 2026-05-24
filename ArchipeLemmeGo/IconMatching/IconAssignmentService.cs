@@ -86,14 +86,18 @@ public sealed partial class IconAssignmentService : IDisposable
         }
     }
 
+    public static string NormalizeName(string name) =>
+        Regex.Replace(name, @"\[\d+\]", "").Trim();
+
     // Returns the best MDI icon name for a given item or location name and game.
     // Returns fallback icon if the matcher is not ready yet or an error occurs.
     public string GetIcon(string gameName, string name, bool isLocation = false)
     {
         var cache = _gameCaches.GetOrAdd(gameName, LoadGameCache);
         var dict = isLocation ? cache.Locations : cache.Items;
+        var matchName = NormalizeName(name);
 
-        if (dict.TryGetValue(name, out var existing))
+        if (dict.TryGetValue(matchName, out var existing))
             return existing;
 
         if (_matcherTask is not { IsCompletedSuccessfully: true })
@@ -110,7 +114,7 @@ public sealed partial class IconAssignmentService : IDisposable
         string icon;
         try
         {
-            icon = _matcherTask.Result.FindBestMatch(name).IconName;
+            icon = _matcherTask.Result.FindBestMatch(matchName).IconName;
         }
         catch (Exception ex)
         {
@@ -118,7 +122,7 @@ public sealed partial class IconAssignmentService : IDisposable
             return FallbackIcon;
         }
 
-        if (dict.TryAdd(name, icon))
+        if (dict.TryAdd(matchName, icon))
             SaveGameCache(gameName, cache);
 
         return icon;

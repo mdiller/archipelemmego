@@ -59,7 +59,7 @@
         <Column field="name" :header="searchType === 'items' ? 'Item' : 'Location'">
           <template #body="{ data }">
             <i :class="['mdi', 'mdi-' + (data.iconName || 'help-circle-outline')]" class="row-icon" />
-            {{ data.name }}
+            {{ displayName(data.name) }}
           </template>
         </Column>
         <Column field="slotName" header="Player" style="width: 9rem;" />
@@ -73,7 +73,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { searchItems, searchLocations } from '../api.js'
+import { searchItems, searchLocations, displayName } from '../api.js'
 
 const props = defineProps({
   channelId: String,

@@ -1,3 +1,7 @@
+export function displayName(name) {
+  return name.replace(/\[1\]/g, '').trim()
+}
+
 async function apiFetch(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(res.status === 404 ? 'Channel not found' : `Error ${res.status}`)

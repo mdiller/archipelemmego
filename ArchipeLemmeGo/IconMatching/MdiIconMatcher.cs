@@ -20,7 +20,7 @@ public sealed class MdiIconMatcherOptions
 public sealed partial class MdiIconMatcher : IDisposable
 {
     // Bump this to force a full cache rebuild on next startup.
-    public const int IconsVersion = 2;
+    public const int IconsVersion = 3;
 
     private const string DefaultMetadataUrl =
         "https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/meta.json";

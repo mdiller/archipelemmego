@@ -49,7 +49,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as d3 from 'd3'
-import { getDeps } from '../api.js'
+import { getDeps, displayName } from '../api.js'
 
 const props = defineProps({ channelId: String })
 
@@ -164,7 +164,7 @@ function renderGraph() {
   addGlow('glow-loc', 4)
 
   const nodeData = nodes.value.map(n => {
-    const lines = wrapText(n.name)
+    const lines = wrapText(displayName(n.name))
     return { ...n, lines, h: calcNodeH(lines), w: NODE_W }
   })
 

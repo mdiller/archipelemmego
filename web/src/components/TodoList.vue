@@ -38,13 +38,13 @@
         <Column field="locationName" header="Location to Check">
           <template #body="{ data }">
             <i :class="['mdi', 'mdi-' + (data.locationIcon || 'help-circle-outline')]" class="row-icon" />
-            {{ data.locationName }}
+            {{ displayName(data.locationName) }}
           </template>
         </Column>
         <Column field="itemName" header="Item">
           <template #body="{ data }">
             <i :class="['mdi', 'mdi-' + (data.itemIcon || 'help-circle-outline')]" class="row-icon" />
-            {{ data.itemName }}
+            {{ displayName(data.itemName) }}
           </template>
         </Column>
         <Column field="requesterName" header="For" style="width: 8rem;" />
@@ -60,7 +60,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { getTodo } from '../api.js'
+import { getTodo, displayName } from '../api.js'
 
 const props = defineProps({
   channelId: String,

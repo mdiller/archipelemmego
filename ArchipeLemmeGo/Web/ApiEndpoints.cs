@@ -292,11 +292,12 @@ namespace ArchipeLemmeGo.Web
             if (matcher == null)
                 return Results.Ok(new { ready = false, message = "Matcher still warming up" });
 
-            var matches = matcher.FindMatches(q, n);
+            var matchName = IconAssignmentService.NormalizeName(q);
+            var matches = matcher.FindMatches(matchName, n);
             return Results.Ok(new
             {
                 ready = true,
-                query = q,
+                query = matchName,
                 iconCount = matcher.IconCount,
                 topMatches = matches.Select(m => new { m.IconName, score = m.Similarity })
             });

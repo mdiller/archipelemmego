@@ -38,13 +38,13 @@
         <Column field="itemName" header="Item">
           <template #body="{ data }">
             <i :class="['mdi', 'mdi-' + (data.itemIcon || 'help-circle-outline')]" class="row-icon" />
-            {{ data.itemName }}
+            {{ displayName(data.itemName) }}
           </template>
         </Column>
         <Column field="locationName" header="Location">
           <template #body="{ data }">
             <i :class="['mdi', 'mdi-' + (data.locationIcon || 'help-circle-outline')]" class="row-icon" />
-            {{ data.locationName }}
+            {{ displayName(data.locationName) }}
           </template>
         </Column>
         <Column field="finderName" header="Finder" style="width: 8rem;" />
@@ -60,7 +60,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { getWaiting } from '../api.js'
+import { getWaiting, displayName } from '../api.js'
 
 const props = defineProps({
   channelId: String,
