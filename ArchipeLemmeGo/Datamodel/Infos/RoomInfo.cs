@@ -48,6 +48,11 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public ulong AdminId { get; set; }
 
         /// <summary>
+        /// The Discord guild (server) ID this room was set up in
+        /// </summary>
+        public ulong GuildId { get; set; }
+
+        /// <summary>
         /// The infos for each slot
         /// </summary>
         public List<SlotInfo> SlotInfos { get; set; } = new List<SlotInfo>();

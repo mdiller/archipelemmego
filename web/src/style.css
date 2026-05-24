@@ -45,6 +45,12 @@ html, body, #app {
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.channel-badge-link:hover {
+  color: #58a6ff;
+  background: #1f3a5f;
 }
 
 .topbar-controls {
@@ -285,4 +291,244 @@ html, body, #app {
   margin-right: 0.35rem;
   opacity: 0.8;
   vertical-align: middle;
+}
+
+/* Icon debug */
+.icon-debug-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.icon-debug-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-wrap: wrap;
+}
+
+.icon-debug-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+}
+
+.icon-filter-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e6edf3;
+  font-size: 0.82rem;
+  width: 220px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.icon-filter-input::placeholder {
+  color: #484f58;
+}
+
+.icon-debug-stats {
+  font-size: 0.78rem;
+  color: #6e7681;
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.icon-debug-sep {
+  opacity: 0.4;
+}
+
+.icon-fallback-warning {
+  font-size: 0.78rem;
+  color: #f0883e;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.icon-debug-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.icon-group-card {
+  flex-shrink: 0;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.icon-group-card.is-fallback {
+  border-color: #3d2008;
+}
+
+.icon-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.icon-group-header:hover {
+  background: #1c2128;
+}
+
+.icon-big-preview {
+  font-size: 1.4rem;
+  color: #8b949e;
+  width: 1.6rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.icon-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 260px;
+}
+
+.icon-name-code {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #58a6ff;
+}
+
+.icon-count-badge {
+  background: #21262d;
+  color: #8b949e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 10px;
+}
+
+.icon-group-preview-pills {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-pill {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.mini-pill-item { background: #1f3a5f; color: #93c5fd; }
+.mini-pill-loc  { background: #2d1f5f; color: #c4b5fd; }
+.mini-pill-more { background: #21262d; color: #6e7681; }
+
+.icon-debug-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.pager-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  border-radius: 4px;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+.pager-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.pager-label {
+  font-size: 0.78rem;
+  color: #6e7681;
+  min-width: 4rem;
+  text-align: center;
+}
+
+.icon-filter-clear {
+  background: none;
+  border: none;
+  color: #484f58;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.icon-filter-clear:hover {
+  color: #8b949e;
+}
+
+.icon-expand-toggle {
+  font-size: 1rem;
+  color: #484f58;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.icon-group-examples {
+  border-top: 1px solid #21262d;
+  padding: 0.5rem 0.6rem;
+}
+
+.example-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.example-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.example-pill-item { background: #1a2d45; color: #93c5fd; }
+.example-pill-loc  { background: #241838; color: #c4b5fd; }
+
+.example-game {
+  font-size: 0.65rem;
+  color: #484f58;
+  font-style: italic;
 }

@@ -4,7 +4,14 @@
       <div class="topbar-left">
         <i class="mdi mdi-island" style="font-size: 1.3rem; color: #58a6ff;" />
         <span class="app-title">ArchipeLemmeGo</span>
-        <span class="channel-badge">{{ channelId }}</span>
+        <a
+          v-if="room?.guildId && room.guildId !== '0'"
+          :href="`https://discord.com/channels/${room.guildId}/${channelId}`"
+          target="_blank"
+          rel="noopener"
+          class="channel-badge channel-badge-link"
+        >{{ channelId }}</a>
+        <span v-else class="channel-badge">{{ channelId }}</span>
       </div>
 
       <div class="topbar-controls">
@@ -66,6 +73,7 @@
         <TodoList v-if="mode === 'todo'" :channelId="channelId" :slot="selectedSlot" :room="room" />
         <ItemSearch v-if="mode === 'search'" :channelId="channelId" :slot="selectedSlot" />
         <DepGraph v-if="mode === 'deps'" :channelId="channelId" />
+        <IconDebug v-if="mode === 'icons'" :channelId="channelId" />
       </template>
     </div>
   </div>
@@ -78,6 +86,7 @@ import WaitingList from '../components/WaitingList.vue'
 import TodoList from '../components/TodoList.vue'
 import ItemSearch from '../components/ItemSearch.vue'
 import DepGraph from '../components/DepGraph.vue'
+import IconDebug from '../components/IconDebug.vue'
 import { getRoom } from '../api.js'
 
 const route = useRoute()
@@ -94,7 +103,8 @@ const modeOptions = [
   { label: 'Waiting', value: 'waiting', icon: 'mdi-clock-outline' },
   { label: 'Todo', value: 'todo', icon: 'mdi-checkbox-marked-outline' },
   { label: 'Search', value: 'search', icon: 'mdi-magnify' },
-  { label: 'Dep Tree', value: 'deps', icon: 'mdi-graph-outline' }
+  { label: 'Dep Tree', value: 'deps', icon: 'mdi-graph-outline' },
+  { label: 'Icons', value: 'icons', icon: 'mdi-palette-outline' }
 ]
 
 const currentMode = computed(() => modeOptions.find(m => m.value === mode.value))

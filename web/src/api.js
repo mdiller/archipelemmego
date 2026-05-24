@@ -35,3 +35,7 @@ export function searchLocations(channelId, q, slot = null) {
 export function getDeps(channelId) {
   return apiFetch(`/api/${channelId}/deps`)
 }
+
+export function getIcons(channelId, { page = 0, pageSize = 50, q = null } = {}) {
+  return apiFetch(buildUrl(`/api/${channelId}/icons`, { page, pageSize, q }))
+}

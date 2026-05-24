@@ -19,6 +19,9 @@ public sealed class MdiIconMatcherOptions
 
 public sealed partial class MdiIconMatcher : IDisposable
 {
+    // Bump this to force a full cache rebuild on next startup.
+    public const int IconsVersion = 2;
+
     private const string DefaultMetadataUrl =
         "https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/meta.json";
 
@@ -64,7 +67,7 @@ public sealed partial class MdiIconMatcher : IDisposable
         var url = options.MetadataUrl ?? DefaultMetadataUrl;
         var urlHash = ComputeUrlHash(url);
 
-        options.Progress?.Invoke("Checking icon embedding cache...");
+        options.Progress?.Invoke($"Checking icon embedding cache (IconsVersion={IconsVersion})...");
 
         if (options.CacheDirectory != null && !options.ForceRefresh)
         {
@@ -74,6 +77,7 @@ public sealed partial class MdiIconMatcher : IDisposable
                 options.Progress?.Invoke($"Loaded {names.Length} icon embeddings from cache.");
                 return new MdiIconMatcher(new LocalEmbedder(), names, embeddings);
             }
+            options.Progress?.Invoke("Cache miss or version mismatch — rebuilding from scratch.");
         }
 
         options.Progress?.Invoke("Downloading MDI icon metadata...");
@@ -88,7 +92,7 @@ public sealed partial class MdiIconMatcher : IDisposable
         {
             var emb = embedder.Embed(BuildSearchText(icons[i]));
             resultNames[i] = icons[i].Name;
-            resultEmbeddings[i] = emb.Values.ToArray();
+            resultEmbeddings[i] = Normalize(emb.Values.ToArray());
 
             if (i > 0 && i % 1000 == 0)
                 options.Progress?.Invoke($"  {i}/{icons.Count} embeddings computed...");
@@ -111,7 +115,7 @@ public sealed partial class MdiIconMatcher : IDisposable
         float[] queryValues;
         lock (_queryLock)
         {
-            queryValues = _embedder.Embed(query).Values.ToArray();
+            queryValues = Normalize(_embedder.Embed(query).Values.ToArray());
         }
 
         var scored = new (float score, int idx)[_iconNames.Length];
@@ -133,7 +137,19 @@ public sealed partial class MdiIconMatcher : IDisposable
         return results;
     }
 
+    private static float[] Normalize(float[] v)
+    {
+        float mag = 0f;
+        foreach (var f in v) mag += f * f;
+        mag = MathF.Sqrt(mag);
+        if (mag < 1e-9f) return v;
+        for (int i = 0; i < v.Length; i++) v[i] /= mag;
+        return v;
+    }
+
     public IconMatch FindBestMatch(string query) => FindMatches(query, 1)[0];
+
+    public int IconCount => _iconNames.Length;
 
     public void Dispose() => _embedder.Dispose();
 
@@ -160,7 +176,7 @@ public sealed partial class MdiIconMatcher : IDisposable
     }
 
     // Binary cache format:
-    //   [uint32 magic=0x4D444943] [byte version=1] [int32 count]
+    //   [uint32 magic=0x4D444943] [byte formatVersion=1] [int32 iconsVersion] [int32 count]
     //   per icon: [string name (BinaryWriter length-prefixed)] [int32 floatCount] [float32 * floatCount]
     private static (string[]? names, float[][]? embeddings) TryLoadCache(
         string cacheDir, string urlHash)
@@ -174,6 +190,7 @@ public sealed partial class MdiIconMatcher : IDisposable
 
             if (br.ReadUInt32() != 0x4D444943u) return (null, null);
             if (br.ReadByte() != 1) return (null, null);
+            if (br.ReadInt32() != IconsVersion) return (null, null);
 
             int count = br.ReadInt32();
             var names = new string[count];
@@ -210,6 +227,7 @@ public sealed partial class MdiIconMatcher : IDisposable
             {
                 bw.Write(0x4D444943u);
                 bw.Write((byte)1);
+                bw.Write(IconsVersion);
                 bw.Write(names.Length);
                 for (int i = 0; i < names.Length; i++)
                 {

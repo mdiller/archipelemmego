@@ -25,6 +25,9 @@ public sealed partial class IconAssignmentService : IDisposable
     // Call at startup to begin background initialization.
     public void WarmUp() => _ = GetMatcherAsync();
 
+    public MdiIconMatcher? GetMatcherForDiag() =>
+        _matcherTask?.IsCompletedSuccessfully == true ? _matcherTask.Result : null;
+
     private Task<MdiIconMatcher> GetMatcherAsync()
     {
         lock (_initLock)
@@ -37,6 +40,7 @@ public sealed partial class IconAssignmentService : IDisposable
     private async Task<MdiIconMatcher> InitMatcherAsync()
     {
         var cacheDir = Path.Combine(AppContext.BaseDirectory, ".mdi-cache");
+        ClearGameCachesIfVersionChanged();
         _logger.LogInformation("[Icons] Initializing MDI icon matcher (may take a moment on first run)...");
         try
         {
@@ -55,6 +59,33 @@ public sealed partial class IconAssignmentService : IDisposable
         }
     }
 
+    private void ClearGameCachesIfVersionChanged()
+    {
+        var versionFile = Path.Combine(CacheDir, "icons_version.txt");
+        var currentVersion = MdiIconMatcher.IconsVersion.ToString();
+
+        try
+        {
+            if (File.Exists(versionFile) && File.ReadAllText(versionFile).Trim() == currentVersion)
+                return;
+
+            if (Directory.Exists(CacheDir))
+            {
+                var jsonFiles = Directory.GetFiles(CacheDir, "*.json");
+                foreach (var f in jsonFiles)
+                    File.Delete(f);
+                _logger.LogInformation("[Icons] Cleared {Count} game icon cache file(s) due to version change (now v{Version}).", jsonFiles.Length, currentVersion);
+            }
+
+            Directory.CreateDirectory(CacheDir);
+            File.WriteAllText(versionFile, currentVersion);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[Icons] Failed to check/clear game icon caches.");
+        }
+    }
+
     // Returns the best MDI icon name for a given item or location name and game.
     // Returns fallback icon if the matcher is not ready yet or an error occurs.
     public string GetIcon(string gameName, string name, bool isLocation = false)
@@ -66,15 +97,24 @@ public sealed partial class IconAssignmentService : IDisposable
             return existing;
 
         if (_matcherTask is not { IsCompletedSuccessfully: true })
+        {
+            var matcherState = _matcherTask == null ? "not started"
+                : _matcherTask.IsFaulted ? $"faulted: {_matcherTask.Exception?.GetBaseException().Message}"
+                : _matcherTask.IsCanceled ? "canceled"
+                : "still running";
+            _logger.LogDebug("[Icons] Returning fallback for '{Name}' (game={Game}, isLocation={IsLoc}) — matcher not ready ({State})",
+                name, gameName, isLocation, matcherState);
             return FallbackIcon;
+        }
 
         string icon;
         try
         {
             icon = _matcherTask.Result.FindBestMatch(name).IconName;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "[Icons] FindBestMatch threw for '{Name}' (game={Game})", name, gameName);
             return FallbackIcon;
         }
 
@@ -82,6 +122,23 @@ public sealed partial class IconAssignmentService : IDisposable
             SaveGameCache(gameName, cache);
 
         return icon;
+    }
+
+    public void LogStats(ILogger logger, string context)
+    {
+        var matcherState = _matcherTask == null ? "not started"
+            : _matcherTask.IsCompletedSuccessfully ? "ready"
+            : _matcherTask.IsFaulted ? $"faulted: {_matcherTask.Exception?.GetBaseException().Message}"
+            : _matcherTask.IsCanceled ? "canceled"
+            : "still running";
+
+        logger.LogInformation("[Icons:{Context}] Matcher state: {State}", context, matcherState);
+        foreach (var (game, cache) in _gameCaches)
+            logger.LogInformation("[Icons:{Context}] Cache for '{Game}': {Items} items, {Locs} locations",
+                context, game, cache.Items.Count, cache.Locations.Count);
+
+        if (_gameCaches.IsEmpty)
+            logger.LogInformation("[Icons:{Context}] No game caches loaded yet", context);
     }
 
     private GameIconCache LoadGameCache(string gameName)

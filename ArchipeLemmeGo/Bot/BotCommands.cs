@@ -26,6 +26,9 @@ namespace ArchipeLemmeGo.Bot
 
             var roomInfo = await ArchipelagoService.RegisterRoomInfo(Context.User.Id, host, port);
 
+            roomInfo.GuildId = Context.Guild?.Id ?? 0;
+            roomInfo.Save();
+
             var channelLinker = ArchipelagoContext.GetChannelLinker();
             channelLinker.ChannelAssignments[Context.Channel.Id] = roomInfo.Uri;
             channelLinker.Save();

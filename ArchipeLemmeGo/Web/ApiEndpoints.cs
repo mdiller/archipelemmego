@@ -16,6 +16,8 @@ namespace ArchipeLemmeGo.Web
             api.MapGet("/items", GetItems);
             api.MapGet("/locations", GetLocations);
             api.MapGet("/deps", GetDeps);
+            api.MapGet("/icons", GetIcons);
+            api.MapGet("/match-test", GetMatchTest);
         }
 
         private static bool TryLoadRoom(string channelId, out RoomInfo? room)
@@ -81,6 +83,7 @@ namespace ArchipeLemmeGo.Web
                 seed = room.Seed,
                 games = room.Games,
                 hintCostPercentage = room.HintCostPercentage,
+                guildId = room.GuildId.ToString(),
                 slots = room.SlotInfos.Select(s => new
                 {
                     slotId = s.SlotId,
@@ -91,10 +94,22 @@ namespace ArchipeLemmeGo.Web
             });
         }
 
-        private static IResult GetWaiting(string channelId, IconAssignmentService icons, int? slot = null)
+        private static IResult GetWaiting(string channelId, IconAssignmentService icons, ILoggerFactory loggerFactory, int? slot = null)
         {
+            var logger = loggerFactory.CreateLogger("ApiEndpoints.Waiting");
+
             if (!TryLoadRoom(channelId, out var room) || room == null)
                 return Results.NotFound();
+
+            var total = room.RequestedHints.Count;
+            var afterFoundFilter = room.RequestedHints.Count(h => !h.IsFound);
+            var afterSlotFilter = room.RequestedHints.Count(h => !h.IsFound && (slot == null || h.RequesterSlot == slot));
+
+            logger.LogInformation(
+                "[GetWaiting] channel={Channel} slot={Slot} | total hints={Total}, after !IsFound={AfterFound}, after slot filter={AfterSlot}",
+                channelId, slot, total, afterFoundFilter, afterSlotFilter);
+
+            icons.LogStats(logger, "GetWaiting");
 
             var hints = room.RequestedHints
                 .Where(h => !h.IsFound)
@@ -104,18 +119,25 @@ namespace ArchipeLemmeGo.Web
                 {
                     var itemGame = room.GetSlotInfo(h.Item.Slot)?.Game ?? "";
                     var locGame = room.GetSlotInfo(h.Location.Slot)?.Game ?? "";
+                    var itemIcon = icons.GetIcon(itemGame, h.Item.Name, isLocation: false);
+                    var locIcon = icons.GetIcon(locGame, h.Location.Name, isLocation: true);
+
+                    logger.LogDebug(
+                        "[GetWaiting] hint: item='{Item}' (game={ItemGame}) → icon={ItemIcon} | loc='{Loc}' (game={LocGame}) → icon={LocIcon} | found={Found}",
+                        h.Item.Name, itemGame, itemIcon, h.Location.Name, locGame, locIcon, h.IsFound);
+
                     return new
                     {
                         itemId = h.ItemId,
                         itemName = h.Item.Name,
-                        itemIcon = icons.GetIcon(itemGame, h.Item.Name, isLocation: false),
+                        itemIcon,
                         requesterSlot = h.RequesterSlot,
                         requesterName = room.GetSlotInfo(h.RequesterSlot)?.Name ?? "Unknown",
                         finderSlot = h.FinderSlot,
                         finderName = room.GetSlotInfo(h.FinderSlot)?.Name ?? "Unknown",
                         locationId = h.LocationId,
                         locationName = h.Location.Name,
-                        locationIcon = icons.GetIcon(locGame, h.Location.Name, isLocation: true),
+                        locationIcon = locIcon,
                         priority = h.Priority,
                         count = h.Count,
                         information = h.Information ?? ""
@@ -259,6 +281,82 @@ namespace ArchipeLemmeGo.Web
                 locations = locations.Where(l => l.name.Contains(q, StringComparison.OrdinalIgnoreCase));
 
             return Results.Ok(locations.Take(150));
+        }
+
+        private static IResult GetMatchTest(IconAssignmentService icons, string? q = null, int n = 10)
+        {
+            if (string.IsNullOrWhiteSpace(q))
+                return Results.BadRequest("Provide ?q=some item name");
+
+            var matcher = icons.GetMatcherForDiag();
+            if (matcher == null)
+                return Results.Ok(new { ready = false, message = "Matcher still warming up" });
+
+            var matches = matcher.FindMatches(q, n);
+            return Results.Ok(new
+            {
+                ready = true,
+                query = q,
+                iconCount = matcher.IconCount,
+                topMatches = matches.Select(m => new { m.IconName, score = m.Similarity })
+            });
+        }
+
+        private record IconEntry(string Name, string Type, string Game, string SlotName);
+
+        private static IResult GetIcons(string channelId, IconAssignmentService icons,
+            int page = 0, int pageSize = 50, string? q = null)
+        {
+            if (!TryLoadRoom(channelId, out var room) || room == null)
+                return Results.NotFound();
+
+            var groups = new Dictionary<string, List<IconEntry>>();
+
+            void Add(string iconName, string name, string type, string game, string slotName)
+            {
+                if (!groups.TryGetValue(iconName, out var list))
+                    groups[iconName] = list = new List<IconEntry>();
+                list.Add(new IconEntry(name, type, game, slotName));
+            }
+
+            foreach (var slot in room.SlotInfos)
+            {
+                var game = slot.Game ?? "";
+                if (slot.ItemLookup != null)
+                    foreach (var (name, _) in slot.ItemLookup)
+                        Add(icons.GetIcon(game, name, isLocation: false), name, "item", game, slot.Name);
+                if (slot.LocationLookup != null)
+                    foreach (var (name, _) in slot.LocationLookup)
+                        Add(icons.GetIcon(game, name, isLocation: true), name, "location", game, slot.Name);
+            }
+
+            var sorted = groups
+                .OrderByDescending(kvp => kvp.Value.Count)
+                .AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(q))
+                sorted = sorted.Where(kvp =>
+                    kvp.Key.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                    kvp.Value.Any(e => e.Name.Contains(q, StringComparison.OrdinalIgnoreCase)));
+
+            var all = sorted.ToList();
+            var totalGroups = all.Count;
+            var totalAssignments = groups.Values.Sum(v => v.Count);
+
+            var pageGroups = all
+                .Skip(page * pageSize)
+                .Take(pageSize)
+                .Select(kvp => new
+                {
+                    iconName = kvp.Key,
+                    count = kvp.Value.Count,
+                    examples = kvp.Value
+                        .DistinctBy(e => e.Name)
+                        .Take(20)
+                        .Select(e => new { name = e.Name, type = e.Type, game = e.Game })
+                });
+
+            return Results.Ok(new { page, pageSize, totalGroups, totalAssignments, groups = pageGroups });
         }
     }
 }
