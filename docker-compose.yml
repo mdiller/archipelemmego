@@ -12,6 +12,7 @@ services:
       - 5512
     volumes:
       - ./resources:/app/resources
+      - ./config.json:/app/config.json:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.archipelemmego.rule=Host(`arch.skrattpotatis.dillerm.io`)
