@@ -11,7 +11,7 @@ namespace ArchipeLemmeGo.Bot
     /// </summary>
     public class BotManager
     {
-        public async Task Startup(string token)
+        public async Task Startup(string token, CancellationToken cancellationToken = default)
         {
             var config = new DiscordSocketConfig
             {
@@ -38,7 +38,7 @@ namespace ArchipeLemmeGo.Bot
 
             await services.GetRequiredService<InteractionHandler>().InitializeAsync();
 
-            await Task.Delay(-1);
+            await Task.Delay(-1, cancellationToken);
         }
     }
 }

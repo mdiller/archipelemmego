@@ -151,7 +151,7 @@ namespace ArchipeLemmeGo.Bot
                     // if we now have a hint (or list of hints), add them to the list of requests for this room?
                     foreach (var hintInfo in hintInfos.Where(h => !h.IsFound))
                     {
-                        result += $"\n • '{hintInfo.Location}' from {hintInfo.Location.Player.Mention}";
+                        result += $"\n • '{hintInfo.Location}' from {hintInfo.Location.Player?.Mention ?? $"Slot #{hintInfo.Location.Slot}"}";
                     }
                 }
 
@@ -222,7 +222,7 @@ namespace ArchipeLemmeGo.Bot
                     result += $" [prio={hintInfo.Priority}] {hintInfo.Information}";
                     itemId = hintInfo.Item.ItemId;
                 }
-                result += $"\n • '{hintInfo.Location}' ({hintInfo.Location.Player.Name})";
+                result += $"\n • '{hintInfo.Location}' ({hintInfo.Location.Player?.Name ?? $"Slot #{hintInfo.Location.Slot}"})";
             }
 
 
@@ -258,7 +258,7 @@ namespace ArchipeLemmeGo.Bot
             {
                 if (itemId == -1 || itemId != hintInfo.Item.ItemId)
                 {
-                    result += $"\nFor `{hintInfo.Item}` ({hintInfo.Item.Player.Name}):";
+                    result += $"\nFor `{hintInfo.Item}` ({hintInfo.Item.Player?.Name ?? $"Slot #{hintInfo.Item.Slot}"}):";
                     result += $" [prio={hintInfo.Priority}] {hintInfo.Information}";
                     itemId = hintInfo.Item.ItemId;
                 }

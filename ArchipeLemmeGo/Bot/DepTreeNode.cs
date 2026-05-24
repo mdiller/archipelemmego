@@ -151,7 +151,7 @@ namespace ArchipeLemmeGo.Bot
         public List<RequestedHintInfo> Hints { get; set; }
 
         public override string Text => $"{Item.Name}";
-        public override string SubText => $"({Item.Player.Name})";
+        public override string SubText => $"({Item.Player?.Name ?? $"Slot #{Item.Slot}"})";
     }
 
     public class DepTreeLocationNode : DepTreeNode
@@ -213,7 +213,7 @@ namespace ArchipeLemmeGo.Bot
         }
 
         public override string Text => $"{Location.Name}";
-        public override string SubText => $"({Location.Player.Name})";
+        public override string SubText => $"({Location.Player?.Name ?? $"Slot #{Location.Slot}"})";
 
     }
 

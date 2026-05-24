@@ -1,7 +1,20 @@
+networks:
+  default:
+    external:
+      name: traefik
+
 services:
   main:
     restart: unless-stopped
     container_name: Archipelemmego
     build: .
+    expose:
+      - 5512
     volumes:
       - ./resources:/app/resources
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.archipelemmego.rule=Host(`arch.skrattpotatis.dillerm.io`)
+      - traefik.http.routers.archipelemmego.entrypoints=websecure
+      - traefik.http.routers.archipelemmego.tls.certresolver=le
+      - traefik.http.services.archipelemmego.loadbalancer.server.port=5512

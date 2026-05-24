@@ -1,4 +1,6 @@
 resources/
 _temp/
 .claude/
+web/node_modules/
+web/dist/
 

@@ -1,22 +1,45 @@
-﻿using ArchipeLemmeGo.Archipelago;
-using ArchipeLemmeGo.Archipelago.ArchipeLemmeGo.Archipelago;
 using ArchipeLemmeGo.Bot;
+using ArchipeLemmeGo.Web;
+using System.Threading.RateLimiting;
 
-namespace ArchipeLemmeGo
+var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.UseUrls("http://0.0.0.0:5512");
+
+builder.Services.AddHostedService<BotService>();
+
+builder.Services.AddRateLimiter(options =>
 {
-    internal class Program
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
     {
-        static async Task Main(string[] args)
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
         {
-            Console.WriteLine("Hello, World!");
+            PermitLimit = 60,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        });
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
+var app = builder.Build();
 
-            var token = BotInfo.BotToken;
-            var botManager = new BotManager();
-            await botManager.Startup(token);
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
 
-            //var tree = TreeRenderer.MakeSample(); // or build your own using AddChild(...)
-            //TreeRenderer.Render(tree, 900, 600, "my_tree.png");
-        }
-    }
-}
+app.UseStaticFiles();
+app.UseRateLimiter();
+
+ApiEndpoints.Map(app);
+
+app.MapFallbackToFile("index.html");
+
+app.Run();

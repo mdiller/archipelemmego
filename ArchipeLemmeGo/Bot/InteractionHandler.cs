@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using System.Reflection;
+using IResult = Discord.Interactions.IResult;
 
 namespace ArchipeLemmeGo.Bot
 {
