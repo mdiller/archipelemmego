@@ -1,6 +1,7 @@
 using ArchipeLemmeGo.Datamodel;
 using ArchipeLemmeGo.Datamodel.Infos;
 using ArchipeLemmeGo.IconMatching;
+using System.Security.Claims;
 
 namespace ArchipeLemmeGo.Web
 {
@@ -18,6 +19,7 @@ namespace ArchipeLemmeGo.Web
             api.MapGet("/deps", GetDeps);
             api.MapGet("/icons", GetIcons);
             api.MapGet("/match-test", GetMatchTest);
+            api.MapPut("/hints/{requesterSlot}/{itemId}/{locationId}/info", UpdateHintInfo);
         }
 
         private static bool TryLoadRoom(string channelId, out RoomInfo? room)
@@ -90,6 +92,11 @@ namespace ArchipeLemmeGo.Web
                     name = s.Name,
                     game = s.Game,
                     discordId = s.DiscordId.ToString()
+                }),
+                coPlayers = room.CoPlayers.Select(kvp => new
+                {
+                    discordId = kvp.Key.ToString(),
+                    slotId = kvp.Value
                 })
             });
         }
@@ -312,6 +319,39 @@ namespace ArchipeLemmeGo.Web
                 })
             });
         }
+
+        private static IResult UpdateHintInfo(HttpContext ctx, string channelId, int requesterSlot, long itemId, long locationId, UpdateInfoBody body)
+        {
+            if (ctx.User.Identity?.IsAuthenticated != true)
+                return Results.Unauthorized();
+
+            if (!TryLoadRoom(channelId, out var room) || room == null)
+                return Results.NotFound();
+
+            if (!ulong.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), out var discordId))
+                return Results.Unauthorized();
+
+            var ownerSlot = room.SlotInfos.FirstOrDefault(s => s.SlotId == requesterSlot);
+            var isOwner = ownerSlot?.DiscordId == discordId;
+            var isCoplayer = room.CoPlayers.TryGetValue(discordId, out var coSlot) && coSlot == requesterSlot;
+            var isAdmin = room.AdminId == discordId;
+
+            if (!isOwner && !isCoplayer && !isAdmin)
+                return Results.Forbid();
+
+            var hint = room.RequestedHints.FirstOrDefault(h =>
+                h.RequesterSlot == requesterSlot && h.ItemId == itemId && h.LocationId == locationId);
+
+            if (hint == null)
+                return Results.NotFound();
+
+            hint.Information = body.Information;
+            room.Save();
+
+            return Results.Ok();
+        }
+
+        private record UpdateInfoBody(string Information);
 
         private record IconEntry(string Name, string Type, string Game, string SlotName);
 

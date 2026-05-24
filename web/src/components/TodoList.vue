@@ -50,7 +50,16 @@
         <Column field="requesterName" header="For" style="width: 8rem;" />
         <Column header="Notes">
           <template #body="{ data }">
-            <span class="info-text">{{ data.information }}</span>
+            <InputText
+              v-if="canEdit(data)"
+              v-model="data.information"
+              size="small"
+              class="info-input"
+              placeholder="Add a note..."
+              @blur="saveInfo(data)"
+              @keyup.enter="($event.target as HTMLElement).blur()"
+            />
+            <span v-else class="info-text">{{ data.information }}</span>
           </template>
         </Column>
       </DataTable>
@@ -60,13 +69,26 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { getTodo, displayName } from '../api.js'
+import { getTodo, updateHintInfo, displayName } from '../api.js'
 
 const props = defineProps({
   channelId: String,
   slot: { type: Number, default: null },
-  room: { type: Object, default: null }
+  room: { type: Object, default: null },
+  editableSlots: { type: Array, default: () => [] }
 })
+
+function canEdit(data) {
+  return props.editableSlots.includes(data.requesterSlot)
+}
+
+async function saveInfo(data) {
+  try {
+    await updateHintInfo(props.channelId, data.requesterSlot, data.itemId, data.locationId, data.information ?? '')
+  } catch (e) {
+    console.error('Failed to save note:', e)
+  }
+}
 
 const items = ref([])
 const loading = ref(true)

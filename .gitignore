@@ -3,4 +3,5 @@ _temp/
 .claude/
 web/node_modules/
 web/dist/
+config.json
 

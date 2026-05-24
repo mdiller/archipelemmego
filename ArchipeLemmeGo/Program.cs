@@ -1,6 +1,8 @@
 using ArchipeLemmeGo.Bot;
 using ArchipeLemmeGo.IconMatching;
 using ArchipeLemmeGo.Web;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +11,22 @@ builder.WebHost.UseUrls("http://0.0.0.0:5512");
 
 builder.Services.AddHostedService<BotService>();
 builder.Services.AddSingleton<IconAssignmentService>();
+builder.Services.AddHttpClient();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(opts =>
+    {
+        opts.Cookie.Name = "archipel_auth";
+        opts.Cookie.HttpOnly = true;
+        opts.Cookie.SameSite = SameSiteMode.Lax;
+        opts.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.None
+            : CookieSecurePolicy.Always;
+        opts.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = 401; return Task.CompletedTask; };
+        opts.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = 403; return Task.CompletedTask; };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -28,6 +46,11 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+});
+
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Frame-Options", "DENY");
@@ -39,10 +62,13 @@ app.Use(async (context, next) =>
 
 app.UseStaticFiles();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.Services.GetRequiredService<IconAssignmentService>().WarmUp();
 
 ApiEndpoints.Map(app);
+AuthEndpoints.Map(app);
 
 app.MapFallbackToFile("index.html");
 

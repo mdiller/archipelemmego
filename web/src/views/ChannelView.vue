@@ -15,6 +15,8 @@
       </div>
 
       <div class="topbar-controls">
+        <LoginButton />
+
         <span class="topbar-label">
           <i class="mdi mdi-controller" />
           Mode
@@ -69,8 +71,8 @@
         {{ roomError }}
       </div>
       <template v-else>
-        <WaitingList v-if="mode === 'waiting'" :channelId="channelId" :slot="selectedSlot" :room="room" />
-        <TodoList v-if="mode === 'todo'" :channelId="channelId" :slot="selectedSlot" :room="room" />
+        <WaitingList v-if="mode === 'waiting'" :channelId="channelId" :slot="selectedSlot" :room="room" :editableSlots="editableSlots" />
+        <TodoList v-if="mode === 'todo'" :channelId="channelId" :slot="selectedSlot" :room="room" :editableSlots="editableSlots" />
         <ItemSearch v-if="mode === 'search'" :channelId="channelId" :slot="selectedSlot" />
         <DepGraph v-if="mode === 'deps'" :channelId="channelId" />
         <IconDebug v-if="mode === 'icons'" :channelId="channelId" />
@@ -87,10 +89,13 @@ import TodoList from '../components/TodoList.vue'
 import ItemSearch from '../components/ItemSearch.vue'
 import DepGraph from '../components/DepGraph.vue'
 import IconDebug from '../components/IconDebug.vue'
+import LoginButton from '../components/LoginButton.vue'
 import { getRoom } from '../api.js'
+import { useAuth } from '../composables/useAuth.js'
 
 const route = useRoute()
 const router = useRouter()
+const { user, init: initAuth } = useAuth()
 
 const channelId = computed(() => route.params.channelId)
 const room = ref(null)
@@ -108,6 +113,18 @@ const modeOptions = [
 ]
 
 const currentMode = computed(() => modeOptions.find(m => m.value === mode.value))
+
+const editableSlots = computed(() => {
+  if (!user.value || !room.value) return []
+  const myId = user.value.id
+  const fromSlots = room.value.slots
+    .filter(s => s.discordId === myId)
+    .map(s => s.slotId)
+  const fromCoplayers = (room.value.coPlayers ?? [])
+    .filter(cp => cp.discordId === myId)
+    .map(cp => cp.slotId)
+  return [...new Set([...fromSlots, ...fromCoplayers])]
+})
 
 const slotOptions = computed(() => {
   if (!room.value) return [{ label: 'All', value: null }]
@@ -139,6 +156,7 @@ async function loadRoom() {
 onMounted(() => {
   const slotParam = route.query.slot
   if (slotParam) selectedSlot.value = parseInt(slotParam)
+  initAuth()
   loadRoom()
 })
 

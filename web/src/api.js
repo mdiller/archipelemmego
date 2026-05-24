@@ -43,3 +43,12 @@ export function getDeps(channelId) {
 export function getIcons(channelId, { page = 0, pageSize = 50, q = null } = {}) {
   return apiFetch(buildUrl(`/api/${channelId}/icons`, { page, pageSize, q }))
 }
+
+export async function updateHintInfo(channelId, requesterSlot, itemId, locationId, information) {
+  const res = await fetch(`/api/${channelId}/hints/${requesterSlot}/${itemId}/${locationId}/info`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ information })
+  })
+  if (!res.ok) throw new Error(`Error ${res.status}`)
+}

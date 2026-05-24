@@ -29,6 +29,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import ProgressSpinner from 'primevue/progressspinner'
 import 'primeicons/primeicons.css'
@@ -54,6 +55,7 @@ app.component('DataTable', DataTable)
 app.component('Column', Column)
 app.component('Select', Select)
 app.component('InputText', InputText)
+app.component('Button', Button)
 app.component('Tag', Tag)
 app.component('ProgressSpinner', ProgressSpinner)
 
