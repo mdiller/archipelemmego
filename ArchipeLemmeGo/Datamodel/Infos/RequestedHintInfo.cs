@@ -137,6 +137,7 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public static List<RequestedHintInfo> UpdateHintInfos(List<RequestedHintInfo> hintInfos, List<Hint> hints)
         {
             var removedList = new List<RequestedHintInfo>();
+            int matchCount = 0;
             hints.ForEach(hint =>
             {
                 var hintInfo = hintInfos.FirstOrDefault(h =>
@@ -146,9 +147,18 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                             && h.RequesterSlot == hint.ReceivingPlayer);
                 if (hintInfo != null)
                 {
+                    matchCount++;
+                    if (hintInfo.IsFound != hint.Found)
+                        Console.WriteLine($"[UpdateHintInfos] IsFound CHANGED: item={hint.ItemId} loc={hint.LocationId} finder={hint.FindingPlayer} receiver={hint.ReceivingPlayer} {hintInfo.IsFound}→{hint.Found}");
                     hintInfo.IsFound = hint.Found;
                 }
+                else
+                {
+                    Console.WriteLine($"[UpdateHintInfos] NO MATCH for AP hint: item={hint.ItemId} loc={hint.LocationId} finder={hint.FindingPlayer} receiver={hint.ReceivingPlayer} found={hint.Found}");
+                }
             });
+            Console.WriteLine($"[UpdateHintInfos] Matched {matchCount}/{hints.Count} AP hints to stored hints");
+
             var finishedList = new List<string>();
             var foundCountMap = new Dictionary<string, int>();
             hintInfos.ForEach(hint =>
@@ -163,15 +173,18 @@ namespace ArchipeLemmeGo.Datamodel.Infos
                     foundCountMap[key]++;
                     if (hint.Count <= foundCountMap[key])
                     {
+                        Console.WriteLine($"[UpdateHintInfos] FinishedList: key={key} foundCount={foundCountMap[key]} needed={hint.Count}");
                         finishedList.Add(key);
                     }
                 }
             });
+
             hintInfos.ForEach(hint =>
             {
                 var key = $"{hint.RequesterSlot}_{hint.ItemId}";
                 if (!hint.IsFound && finishedList.Contains(key))
                 {
+                    Console.WriteLine($"[UpdateHintInfos] Removing unfound hint: item={hint.ItemId} loc={hint.LocationId} finder={hint.FinderSlot} receiver={hint.RequesterSlot}");
                     removedList.Add(hint);
                 }
             });

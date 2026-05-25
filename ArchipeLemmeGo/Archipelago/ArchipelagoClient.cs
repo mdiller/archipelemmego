@@ -84,12 +84,17 @@ namespace ArchipeLemmeGo.Archipelago
             try
             {
                 // connect
+                Console.WriteLine($"[DoResync] Connecting as slot={archCtx.SlotInfo.SlotId} ({archCtx.SlotInfo.Name})");
                 await client.ConnectAsync();
 
 
                 // Grab all hints
                 var hints = (await client.GetHints())
                     .ToList();
+
+                Console.WriteLine($"[DoResync] Got {hints.Count} hints from AP for slot {archCtx.SlotInfo.SlotId}");
+                foreach (var h in hints)
+                    Console.WriteLine($"[DoResync]   AP hint: item={h.ItemId} loc={h.LocationId} finder={h.FindingPlayer} receiver={h.ReceivingPlayer} found={h.Found}");
 
                 // Update hint infos
                 var removedHints = RequestedHintInfo.UpdateHintInfos(archCtx.RoomInfo.RequestedHints, hints);
@@ -99,6 +104,7 @@ namespace ArchipeLemmeGo.Archipelago
                 );
                 removedHints = removedHints.Distinct(comparer).ToList();
 
+                Console.WriteLine($"[DoResync] UpdateHintInfos removed {removedHints.Count} finished hints, saved.");
                 archCtx.RoomInfo.Save();
 
                 if (announce)

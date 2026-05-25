@@ -235,6 +235,15 @@ namespace ArchipeLemmeGo.Bot
             await DeferAsync();
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
 
+            var userId = Context.User.Id;
+            var slotId = archCtx.SlotInfo.SlotId;
+            Console.WriteLine($"[ItemsTodo] user={userId} resolvedSlot={slotId} ({archCtx.SlotInfo.Name})");
+
+            var preTotal = archCtx.RoomInfo.RequestedHints.Count;
+            var preFinderMatch = archCtx.RoomInfo.RequestedHints.Count(h => h.FinderSlot == slotId);
+            var preUnfound = archCtx.RoomInfo.RequestedHints.Count(h => h.FinderSlot == slotId && !h.IsFound);
+            Console.WriteLine($"[ItemsTodo] PRE-RESYNC: totalHints={preTotal} finderSlot{slotId}={preFinderMatch} unfound={preUnfound}");
+
             string announceText;
             try
             {
@@ -242,14 +251,24 @@ namespace ArchipeLemmeGo.Bot
             }
             catch (UserError e)
             {
+                Console.WriteLine($"[ItemsTodo] DoResync FAILED: {e.Message}");
                 announceText = "*Errored while connecting to the archipelago room, so this may be out of date*";
             }
 
+            var postTotal = archCtx.RoomInfo.RequestedHints.Count;
+            var postFinderMatch = archCtx.RoomInfo.RequestedHints.Count(h => h.FinderSlot == slotId);
+            var postUnfound = archCtx.RoomInfo.RequestedHints.Count(h => h.FinderSlot == slotId && !h.IsFound);
+            Console.WriteLine($"[ItemsTodo] POST-RESYNC: totalHints={postTotal} finderSlot{slotId}={postFinderMatch} unfound={postUnfound}");
+
             var hintInfos = archCtx.RoomInfo.RequestedHints
-                .Where(h => h.FinderSlot == archCtx.SlotInfo.SlotId && !h.IsFound)
+                .Where(h => h.FinderSlot == slotId && !h.IsFound)
                 .OrderBy(h => h.Priority)
                 .Reverse()
                 .ToList();
+
+            Console.WriteLine($"[ItemsTodo] Showing {hintInfos.Count} hints:");
+            foreach (var h in hintInfos)
+                Console.WriteLine($"[ItemsTodo]   item={h.Item.Name} (requesterSlot={h.RequesterSlot}) loc={h.Location.Name} (finderSlot={h.FinderSlot}) prio={h.Priority}");
 
             var result = announceText + "\n\n__Things to do:__";
             long itemId = -1;

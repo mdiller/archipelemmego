@@ -54,10 +54,14 @@ namespace ArchipeLemmeGo.Archipelago
 
         public static ArchipelagoContext FromChannelUser(ulong channelId, ulong userId, bool allowNull = false, bool requireRegistered = false)
         {
+            Console.WriteLine($"[FromChannelUser] channel={channelId} user={userId} allowNull={allowNull} requireRegistered={requireRegistered}");
+
             var discLinker = GetChannelLinker();
-            
+            Console.WriteLine($"[FromChannelUser] ChannelLinker has {discLinker.ChannelAssignments.Count} assignments");
+
             if (!discLinker.ChannelAssignments.ContainsKey(channelId))
             {
+                Console.WriteLine($"[FromChannelUser] channel {channelId} NOT found in linker");
                 if (allowNull)
                 {
                     return null;
@@ -69,19 +73,30 @@ namespace ArchipeLemmeGo.Archipelago
             }
 
             var roomUri = discLinker.ChannelAssignments[channelId];
+            Console.WriteLine($"[FromChannelUser] channel {channelId} → room {roomUri}");
 
             var roomInfo = LoadRoomInfo(roomUri);
+            Console.WriteLine($"[FromChannelUser] room loaded: seed={roomInfo.Seed} slots={roomInfo.SlotInfos.Count}");
+            foreach (var s in roomInfo.SlotInfos)
+                Console.WriteLine($"[FromChannelUser]   slot {s.SlotId} '{s.Name}' discordId={s.DiscordId}");
+
             var authorId = userId;
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
+            Console.WriteLine($"[FromChannelUser] direct slot lookup for {authorId}: {(slotInfo != null ? $"found slot {slotInfo.SlotId} '{slotInfo.Name}'" : "not found")}");
 
             if (slotInfo == null && roomInfo.CoPlayers.TryGetValue(authorId, out var coSlotId))
+            {
                 slotInfo = roomInfo.GetSlotInfo(coSlotId);
+                Console.WriteLine($"[FromChannelUser] coplayer lookup for {authorId}: {(slotInfo != null ? $"found slot {slotInfo.SlotId} '{slotInfo.Name}'" : "not found")}");
+            }
 
             if (slotInfo == null && requireRegistered)
             {
+                Console.WriteLine($"[FromChannelUser] THROWING: user {authorId} not registered in room {roomUri}");
                 throw new UserError($"You have to register as a player in this room with `/register`.");
             }
 
+            Console.WriteLine($"[FromChannelUser] resolved: user={authorId} slot={slotInfo?.SlotId} ('{slotInfo?.Name}')");
             return new ArchipelagoContext
             {
                 RoomInfo = roomInfo,
@@ -96,11 +111,16 @@ namespace ArchipeLemmeGo.Archipelago
         /// <returns>The archipelago context</returns>
         public static ArchipelagoContext FromCtx(SocketInteractionContext ctx, bool allowNull = false, bool requireRegistered = false)
         {
-            var discLinker = GetChannelLinker();
-
             var channelId = ctx.Channel.Id;
+            var authorId = ctx.User.Id;
+            Console.WriteLine($"[FromCtx] channel={channelId} user={authorId} ({ctx.User.Username}) allowNull={allowNull} requireRegistered={requireRegistered}");
+
+            var discLinker = GetChannelLinker();
+            Console.WriteLine($"[FromCtx] ChannelLinker has {discLinker.ChannelAssignments.Count} assignments");
+
             if (!discLinker.ChannelAssignments.ContainsKey(channelId))
             {
+                Console.WriteLine($"[FromCtx] channel {channelId} NOT found in linker. Known channels: {string.Join(", ", discLinker.ChannelAssignments.Keys)}");
                 if (allowNull)
                 {
                     return null;
@@ -112,19 +132,31 @@ namespace ArchipeLemmeGo.Archipelago
             }
 
             var roomUri = discLinker.ChannelAssignments[channelId];
+            Console.WriteLine($"[FromCtx] channel {channelId} → room {roomUri}");
 
             var roomInfo = LoadRoomInfo(roomUri);
-            var authorId = ctx.User.Id;
+            Console.WriteLine($"[FromCtx] room loaded: seed={roomInfo.Seed} slots={roomInfo.SlotInfos.Count} coPlayers={roomInfo.CoPlayers.Count}");
+            foreach (var s in roomInfo.SlotInfos)
+                Console.WriteLine($"[FromCtx]   slot {s.SlotId} '{s.Name}' game='{s.Game}' discordId={s.DiscordId}");
+            foreach (var cp in roomInfo.CoPlayers)
+                Console.WriteLine($"[FromCtx]   coplayer discordId={cp.Key} → slotId={cp.Value}");
+
             var slotInfo = roomInfo.SlotInfos.FirstOrDefault(s => s.DiscordId == authorId);
+            Console.WriteLine($"[FromCtx] direct slot lookup for {authorId}: {(slotInfo != null ? $"found slot {slotInfo.SlotId} '{slotInfo.Name}'" : "not found")}");
 
             if (slotInfo == null && roomInfo.CoPlayers.TryGetValue(authorId, out var coSlotId))
+            {
                 slotInfo = roomInfo.GetSlotInfo(coSlotId);
+                Console.WriteLine($"[FromCtx] coplayer lookup for {authorId}: {(slotInfo != null ? $"found slot {slotInfo.SlotId} '{slotInfo.Name}'" : "not found")}");
+            }
 
             if (slotInfo == null && requireRegistered)
             {
+                Console.WriteLine($"[FromCtx] THROWING: user {authorId} ({ctx.User.Username}) not registered in room {roomUri}");
                 throw new UserError($"You have to register as a player in this room with `/register`.");
             }
 
+            Console.WriteLine($"[FromCtx] resolved: user={authorId} slot={slotInfo?.SlotId} ('{slotInfo?.Name}')");
             return new ArchipelagoContext
             {
                 RoomInfo = roomInfo,
