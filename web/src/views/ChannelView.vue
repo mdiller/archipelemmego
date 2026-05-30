@@ -102,7 +102,7 @@ const room = ref(null)
 const roomLoading = ref(true)
 const roomError = ref(null)
 const mode = ref('waiting')
-const selectedSlot = ref(null)
+const selectedSlot = ref(route.query.slot ? parseInt(route.query.slot) : null)
 
 const modeOptions = [
   { label: 'Waiting', value: 'waiting', icon: 'mdi-clock-outline' },
@@ -154,8 +154,6 @@ async function loadRoom() {
 }
 
 onMounted(() => {
-  const slotParam = route.query.slot
-  if (slotParam) selectedSlot.value = parseInt(slotParam)
   initAuth()
   loadRoom()
 })
