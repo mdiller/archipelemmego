@@ -49,34 +49,24 @@ namespace ArchipeLemmeGo.Bot
             if (result.Error == InteractionCommandError.Exception && result is ExecuteResult execResult)
             {
                 var ex = execResult.Exception;
+                var cause = ex.InnerException ?? ex;
 
-                if (ex.InnerException is UserError specificEx1)
+                string messageToSend;
+                if (cause is UserError userError)
                 {
-                    ex = ex.InnerException;
-                }
-
-                var messageToSend = $"EXCEPTION OCCURRED OH NO:\n```\n{ex.GetType().FullName}:\n{ex.Message}\n```";
-
-                // Handle your specific exception type
-                if (ex is UserError specificEx)
-                {
-                    messageToSend = specificEx.Message;
+                    messageToSend = userError.Message;
                 }
                 else
                 {
-                    // Log the exception or handle it as needed
-                    Console.WriteLine($"[Error] Exception in command {command.Name}: {ex}");
-                    Console.WriteLine(ex.StackTrace);
+                    Console.WriteLine($"[Error] Unhandled exception in command '{command.Name}':");
+                    Console.WriteLine(ex.ToString());
+                    messageToSend = $"EXCEPTION OCCURRED OH NO:\n```\n{cause.GetType().FullName}:\n{cause.Message}\n```";
                 }
 
                 if (context.Interaction.HasResponded)
-                {
                     await context.Interaction.FollowupAsync(messageToSend);
-                }
                 else
-                {
                     await context.Interaction.RespondAsync(messageToSend);
-                }
             }
         }
     }
