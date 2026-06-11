@@ -43,6 +43,11 @@ namespace ArchipeLemmeGo.Datamodel.Infos
         public string[] Games { get; set; }
 
         /// <summary>
+        /// The Archipelago room ID from the website URL (e.g. turZiGOQSsGA7ZsPRhJAHw)
+        /// </summary>
+        public string RoomId { get; set; }
+
+        /// <summary>
         /// The discord ID of the admin of this room (usually whoever called /setup)
         /// </summary>
         public ulong AdminId { get; set; }

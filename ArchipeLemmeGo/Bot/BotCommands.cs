@@ -1,5 +1,6 @@
 ﻿using ArchipeLemmeGo.Archipelago;
 using ArchipeLemmeGo.Datamodel.Infos;
+using ArchipeLemmeGo;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -24,8 +25,33 @@ namespace ArchipeLemmeGo.Bot
                 return;
             }
 
-            var roomInfo = await ArchipelagoService.RegisterRoomInfo(Context.User.Id, host, port);
+            await LinkRoomToChannel(host, port, roomId: null);
+        }
 
+        [SlashCommand("setup", "Link this channel to an Archipelago room using a room URL")]
+        public async Task SetupAsync(
+            [Summary(description: "The Archipelago room URL (e.g. https://archipelago.gg/room/...)")] string url)
+        {
+            var archCtx = ArchipelagoContext.FromCtx(Context, true);
+
+            await DeferAsync();
+
+            if (archCtx != null && !archCtx.IsUserAdmin(Context.User.Id))
+            {
+                await FollowupAsync("This channel has already been linked to a room.");
+                return;
+            }
+
+            var roomId = ArchipelagoWebService.ExtractRoomId(url);
+            var port = await ArchipelagoWebService.FetchPortAsync(roomId);
+
+            await LinkRoomToChannel("archipelago.gg", port, roomId);
+        }
+
+        private async Task LinkRoomToChannel(string host, int port, string? roomId)
+        {
+            var roomInfo = await ArchipelagoService.RegisterRoomInfo(Context.User.Id, host, port);
+            roomInfo.RoomId = roomId;
             roomInfo.GuildId = Context.Guild?.Id ?? 0;
             roomInfo.Save();
 
@@ -34,6 +60,23 @@ namespace ArchipeLemmeGo.Bot
             channelLinker.Save();
 
             await FollowupAsync($"Room has been set up! Internal Seed: `{roomInfo.Seed}`");
+        }
+
+        [SlashCommand("updateport", "Fetch the latest port for this channel's Archipelago room")]
+        public async Task UpdatePortAsync()
+        {
+            var archCtx = ArchipelagoContext.FromCtx(Context);
+
+            await DeferAsync();
+
+            if (string.IsNullOrEmpty(archCtx.RoomInfo.RoomId))
+                throw new UserError("This room wasn't set up with a URL. Use `/setup` to re-link it.");
+
+            var port = await ArchipelagoWebService.FetchPortAsync(archCtx.RoomInfo.RoomId);
+            archCtx.RoomInfo.Port = port;
+            archCtx.RoomInfo.Save();
+
+            await FollowupAsync($"New Port: `{port}`");
         }
 
         [SlashCommand("register", "Register a player with the bot.")]
