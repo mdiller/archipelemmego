@@ -79,7 +79,17 @@ namespace ArchipeLemmeGo.Bot
             try
             {
                 // connect
-                await client.ConnectAsync();
+                try
+                {
+                    await client.ConnectAsync();
+                }
+                catch (ArchipelagoConnectionFailedException) when (!string.IsNullOrEmpty(archCtx.RoomInfo.RoomId))
+                {
+                    var firstSlot = archCtx.RoomInfo.SlotInfos.FirstOrDefault() ?? archCtx.SlotInfo;
+                    var newPort = await ArchipelagoWebService.ReconnectAsync(archCtx.RoomInfo, firstSlot);
+                    await FollowupAsync($"Couldn't connect — reconnected on new port `{newPort}`. Please run the command again.");
+                    return;
+                }
 
                 // check if there is an existing/known hint for this item
                 var hints = (await client.GetHints())

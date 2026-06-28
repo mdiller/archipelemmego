@@ -15,6 +15,12 @@ namespace ArchipeLemmeGo.Archipelago
             : base($"Failed to connect to Archipelago server.\nSlot: {slotInfo.SlotId}\nRoom: {roomInfo.Uri}") { }
     }
 
+    public class ArchipelagoConnectionFailedException : UserError
+    {
+        public ArchipelagoConnectionFailedException()
+            : base("Couldn't connect to the room. Try opening a lua console by clicking on your name on the webpage. Then try the command again.") { }
+    }
+
     public class ArchipelagoClient
     {
         private ArchipelagoSession _session;
@@ -72,7 +78,7 @@ namespace ArchipeLemmeGo.Archipelago
             catch (Exception e) // TODO: fix this later to only point to the one we care about
             {
                 Console.WriteLine($"CONNECTION ERROR: {e.GetType().Name}\n{e.Message}");
-                throw new UserError("Couldn't connect to the room. Try opening a lua console by clicking on your name on the webpage. Then try the command again.");
+                throw new ArchipelagoConnectionFailedException();
             }
         }
 

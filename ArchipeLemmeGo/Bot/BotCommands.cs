@@ -185,9 +185,18 @@ namespace ArchipeLemmeGo.Bot
 
             var archCtx = ArchipelagoContext.FromCtx(Context, requireRegistered: true);
 
-            var announceText = await ArchipelagoClient.DoResync(archCtx);
-
-            await FollowupAsync("__done!__\n" + announceText);
+            try
+            {
+                var announceText = await ArchipelagoClient.DoResync(archCtx);
+                await FollowupAsync("__done!__\n" + announceText);
+            }
+            catch (ArchipelagoConnectionFailedException) when (!string.IsNullOrEmpty(archCtx.RoomInfo.RoomId))
+            {
+                var firstSlot = archCtx.RoomInfo.SlotInfos.FirstOrDefault()
+                    ?? throw new UserError("No registered slots in this room.");
+                var newPort = await ArchipelagoWebService.ReconnectAsync(archCtx.RoomInfo, firstSlot);
+                await FollowupAsync($"Couldn't connect — reconnected on new port `{newPort}`. Please run `/sync` again.");
+            }
         }
     }
 
