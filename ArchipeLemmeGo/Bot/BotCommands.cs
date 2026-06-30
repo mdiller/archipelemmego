@@ -115,6 +115,30 @@ namespace ArchipeLemmeGo.Bot
             await FollowupAsync("Failed to connect after 5 attempts. The room may not be active yet — try again later.");
         }
 
+        [SlashCommand("reconnect", "Fetch the latest port and verify the connection, retrying up to 5 times")]
+        public async Task ReconnectAsync()
+        {
+            var archCtx = ArchipelagoContext.FromCtx(Context);
+
+            await DeferAsync();
+
+            if (string.IsNullOrEmpty(archCtx.RoomInfo.RoomId))
+                throw new UserError("This room wasn't set up with a URL. Use `/setup` to re-link it.");
+
+            var firstSlot = archCtx.RoomInfo.SlotInfos.FirstOrDefault();
+            if (firstSlot == null)
+                throw new UserError("No registered slots in this room. Register a player first.");
+
+            if (await TryConnectAsync(archCtx.RoomInfo, firstSlot))
+            {
+                await FollowupAsync($"Already connected on current port `{archCtx.RoomInfo.Port}`.");
+                return;
+            }
+
+            var newPort = await ArchipelagoWebService.ReconnectAsync(archCtx.RoomInfo, firstSlot);
+            await FollowupAsync($"Connected on new port `{newPort}`.");
+        }
+
         private async Task<bool> TryConnectAsync(RoomInfo roomInfo, SlotInfo slotInfo)
         {
             var client = new ArchipelagoClient(roomInfo, slotInfo);
